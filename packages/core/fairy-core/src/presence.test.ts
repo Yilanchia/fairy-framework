@@ -37,8 +37,11 @@ class StubSelf extends FairySelf {
     if (options.cue?.includes('花生')) facts.push({ id: 'e9', text: '你想起：主人对你说：我对花生过敏' })
     return facts
   }
-  async hear(person: FairyPerson, text: string): Promise<FairyHeard> {
+  readonly where: Array<string | undefined> = []
+  async perceive(): Promise<void> {}
+  async hear(person: FairyPerson, text: string, where?: string): Promise<FairyHeard> {
     this.heard.push({ person, text })
+    this.where.push(where)
     return { id: `e${100 + this.heard.length}`, ...(text.includes('不想活') ? { urgent: CRISIS } : {}) }
   }
   async speak(speech: FairySpeech): Promise<void> {
@@ -72,7 +75,7 @@ async function host() {
 
 /** Just enough of an agent and its session for what presence reads. */
 function agent() {
-  const session = {} as Session
+  const session = { id: 's-1' } as unknown as Session
   return { session, agent: { session } as unknown as Agent }
 }
 
@@ -121,6 +124,8 @@ test('a turn enters her life: heard before the model is asked, answered when it 
   const decision = await preStep(ctx, target, [message('零食里有花生吗')])
   assert.equal(decision.kind, 'enter')
   assert.deepEqual(self.heard, [{ person: { personId: 'owner', name: '主人' }, text: '零食里有花生吗' }])
+  // Her memory of it points at the session that has the rest.
+  assert.deepEqual(self.where, ['dsh-session:s-1'])
 
   // What the message brought to mind is in the context of this very request.
   const assembly = await ctx.systemPrompt.assemble({ agent: target.agent })

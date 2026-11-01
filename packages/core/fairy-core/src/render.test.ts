@@ -42,6 +42,8 @@ test('memories say how clearly she has them, and say so when there are none', ()
   assert.match(text, /\[e9\]（清楚）11月2日/)
   assert.match(text, /\[e40\]（很淡）记不太清了/)
   assert.match(renderMemories('猫', []), /什么也没找到/)
+  const pointed = renderMemories('锁', [{ id: 'e3', at: 0, clarity: 'vague', text: '前天，主人对你说：修一下锁', where: 'dsh-session:s1' }])
+  assert.match(pointed, /修一下锁（完整对话：dsh-session:s1）$/)
 })
 
 test('status reads as plain text', () => {

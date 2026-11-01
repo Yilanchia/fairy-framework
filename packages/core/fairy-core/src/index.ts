@@ -99,6 +99,19 @@ export interface FairyMemory {
   /** `clear`: word for word. `vague`: the gist. `faint`: barely. */
   readonly clarity: 'clear' | 'vague' | 'faint'
   readonly text: string
+  /** Where the conversation it comes from is kept in full. */
+  readonly where?: string
+}
+
+export interface FairyPerception {
+  /** One word for where it came from, e.g. `machine`, `calendar`. */
+  readonly source: string
+  /** What she noticed, as she would say it. */
+  readonly what: string
+  /** What it is, so she can come to like or dislike it, e.g. `music`. */
+  readonly detail?: string
+  /** -1 to 1, the sense's own rating. */
+  readonly valence?: number
 }
 
 /**
@@ -118,8 +131,16 @@ export abstract class FairySelf extends Service {
    * said), older things it brings to mind are included.
    */
   abstract facts(options?: { readonly personId?: string; readonly cue?: string }): FairyFact[]
-  /** Someone says something to her. She wakes up if she was asleep. */
-  abstract hear(person: FairyPerson, text: string): Promise<FairyHeard>
+  /**
+   * Someone says something to her. She wakes up if she was asleep. `where` says where the whole
+   * conversation is kept, e.g. `dsh-session:<id>`.
+   */
+  abstract hear(person: FairyPerson, text: string, where?: string): Promise<FairyHeard>
+  /**
+   * Something outside happened and she may notice it; asleep, she does not. For senses: what
+   * she feels about it is hers, `valence` only nudges it.
+   */
+  abstract perceive(perception: FairyPerception): Promise<void>
   /** Records what was said back, so it becomes part of her life. */
   abstract speak(speech: FairySpeech): Promise<void>
   /** She searches her memory on purpose; what she finds stays clearer afterwards. */

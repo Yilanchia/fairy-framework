@@ -55,7 +55,7 @@ test('what she hears and says goes into her life, and she can find it again', as
   const self = ctx.fairySelf
   const owner = { personId: 'owner', name: '主人' }
 
-  const heard = await self.hear(owner, '我对花生过敏，以后买零食帮我看着点')
+  const heard = await self.hear(owner, '我对花生过敏，以后买零食帮我看着点', 'dsh-session:s-1')
   assert.equal(heard.urgent, undefined)
   await self.speak({ ...owner, inReplyTo: heard.id, text: '记下了，主人。', speaker: 'dsh:test' })
   // She is awake now, whatever the hour: being talked to wakes her.
@@ -64,6 +64,11 @@ test('what she hears and says goes into her life, and she can find it again', as
   const found = await self.remember('花生', owner)
   assert.equal(found[0]?.id, heard.id)
   assert.equal(found[0]?.clarity, 'clear')
+  assert.equal(found[0]?.where, 'dsh-session:s-1')
+
+  // Awake now, she notices what a sense tells her, and it becomes part of her life.
+  await self.perceive({ source: 'machine', what: '主人的电脑开始播放音乐', detail: '音乐', valence: 0.5 })
+  assert.ok((await self.remember('播放音乐')).some((memory) => memory.text.includes('主人的电脑开始播放音乐')))
   assert.ok(self.facts({ personId: 'owner' }).some((fact) => fact.text.includes('记下了，主人。')))
 
   await self.note({ ...owner, topic: '饮食禁忌', text: '主人对花生过敏，不能吃含花生的东西', source: heard.id })

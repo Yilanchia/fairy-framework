@@ -5,6 +5,7 @@ import {
   type FairyIdentity,
   type FairyMemory,
   type FairyNote,
+  type FairyPerception,
   type FairyPerson,
   type FairySpeech,
   type FairyStatus,
@@ -102,8 +103,8 @@ export class IslaSelf extends FairySelf {
     return toFacts(this.alive().facts({ ...options }))
   }
 
-  async hear(person: FairyPerson, text: string): Promise<FairyHeard> {
-    const { heard, said } = await this.alive().listen({ ...person, text })
+  async hear(person: FairyPerson, text: string, where?: string): Promise<FairyHeard> {
+    const { heard, said } = await this.alive().listen({ ...person, text, ...(where ? { where } : {}) })
     // listen() answers by itself only with the fixed crisis reply.
     return { id: heard.id, ...(said ? { urgent: said.payload.text } : {}) }
   }
@@ -114,6 +115,15 @@ export class IslaSelf extends FairySelf {
       inReplyTo: speech.inReplyTo,
       text: speech.text,
       speaker: speech.speaker,
+    })
+  }
+
+  async perceive(perception: FairyPerception): Promise<void> {
+    await this.alive().perceive({
+      source: perception.source,
+      what: perception.what,
+      ...(perception.detail ? { detail: perception.detail } : {}),
+      ...(perception.valence !== undefined ? { valence: perception.valence } : {}),
     })
   }
 

@@ -35,7 +35,10 @@ export function renderMemories(query: string, memories: readonly FairyMemory[]):
   if (memories.length === 0) return `关于「${query}」，你的记忆里什么也没找到。`
   return [
     `关于「${query}」，你想起了这些（按相关程度排列）：`,
-    ...memories.map((memory) => `[${memory.id}]（${CLARITY_WORDS[memory.clarity]}）${memory.text}`),
+    ...memories.map(
+      (memory) =>
+        `[${memory.id}]（${CLARITY_WORDS[memory.clarity]}）${memory.text}${memory.where ? `（完整对话：${memory.where}）` : ''}`,
+    ),
   ].join('\n')
 }
 

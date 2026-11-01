@@ -26,5 +26,5 @@ export function toFacts(facts: readonly Fact[]): FairyFact[] {
 }
 
 export function toMemories(recollections: readonly Recollection[]): FairyMemory[] {
-  return recollections.map(({ id, at, clarity, text }) => ({ id, at, clarity, text }))
+  return recollections.map(({ id, at, clarity, text, where }) => ({ id, at, clarity, text, ...(where ? { where } : {}) }))
 }

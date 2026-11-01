@@ -63,7 +63,7 @@ pnpm fairy
 
 ## 还没有的
 
-- 外部感知（`perceive()`）还没有，她只知道房间里的天气和书（[决策 9](docs/decisions.md#9-对话进入她的生命)）。
+- 感官：`perceive()` 接口有了，但 `fairy-senses` 还没有接任何来源，她只知道房间里的天气和书（[决策 9](docs/decisions.md#9-对话进入她的生命)）。
 - 回复里没有标出用了哪些事实，所以对话里的引用暂时不加强记忆；主动回想（`fairy_recall`）会。见 [docs/memory.md](docs/memory.md)。
 - 换一种完全不同的说法问，记忆只能找到一半左右；语义检索（embedding）还没有。
 - 她住在 Isla 的示例小房间（窗、书架），还没有自己的世界和活动，比如追剧。

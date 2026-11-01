@@ -104,7 +104,7 @@ export function apply(ctx: Context, config: Config) {
     if (!text) return decision
     const turn = turnOf(payload.agent.session)
     try {
-      const heard = await ctx.fairySelf.hear(owner, text)
+      const heard = await ctx.fairySelf.hear(owner, text, `dsh-session:${payload.agent.session.id}`)
       turn.heard = heard.id
       turn.cue = text
       if (heard.urgent) turn.urgent = heard.urgent
