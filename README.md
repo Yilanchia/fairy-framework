@@ -65,9 +65,26 @@ pnpm fairy
 
 ## 还没有的
 
-- 感官：`perceive()` 接口有了，但 `fairy-senses` 还没有接任何来源，她只知道房间里的天气和书（[决策 9](docs/decisions.md#9-对话进入她的生命)）。
 - 回复里没有标出用了哪些事实，所以对话里的引用暂时不加强记忆；主动回想（`fairy_recall`）会。见 [docs/memory.md](docs/memory.md)。
 - 换一种完全不同的说法问，记忆只能找到一半左右；语义检索（embedding）还没有。
-- 她住在 Isla 的示例小房间（窗、书架），还没有自己的世界和活动，比如追剧。
-- guard / senses / hands 只是占位。
+- 她想主动说话时，只能送进一个开着的会话；网页关着、DSH 也没有会话在跑时，那一次就不发。手机推送、微信这类渠道还没有。
+- 追剧之类的消遣还没有；书架机制有了，要的只是一个来源。
+- hands 只是占位。
 - 跨端：现在只监听 127.0.0.1。开放给其他设备之前，要先解决认证和 TLS。
+
+## 给她订阅、给她看项目
+
+新闻和项目默认都是空的。在 `.fairy-home/profiles/fairy/cordis.patch.yml` 里加上（这个文件是你的，不会被覆盖）：
+
+```yaml
+- id: fairy-senses
+  config:
+    feeds:
+      - { url: 'https://example.com/feed.xml', name: 例子, tags: [科技] }
+    projects:
+      - 'D:\fairy-framework'
+    everyMinutes: 60
+    perSource: 5
+```
+
+改完重启 `pnpm fairy`。项目只用 `git log` 读提交，不改任何东西。

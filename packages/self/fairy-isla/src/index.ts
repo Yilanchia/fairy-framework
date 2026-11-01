@@ -7,13 +7,15 @@ import {
   type FairyNote,
   type FairyPerception,
   type FairyPerson,
+  type FairyShelfItem,
   type FairySpeech,
   type FairyStatus,
+  type FairyUrge,
 } from '@fairy/core'
 import type { Context } from '@deepseek-ai/cordis'
 import { Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { createRoom, FileArchive, Life } from '@isla/life'
+import { ACTIVITIES, createRoom, FileArchive, Life, shelfActivity } from '@isla/life'
 import { dirname, isAbsolute, join } from 'node:path'
 import { backupLife } from './backup.js'
 import { FAIRY_GENOME } from './genome.js'
@@ -35,6 +37,9 @@ export interface Config {
   backupDir?: string
   /** How many daily copies to keep. 0 turns backups off. */
   keepBackups: number
+  /** Whether she may reach out to the owner on her own. The owner said yes on 2026-11-01. */
+  reachOut: boolean
+  ownerId: string
 }
 
 export const Config: z<Config> = z.object({
@@ -43,7 +48,26 @@ export const Config: z<Config> = z.object({
   heartbeatMs: z.natural().min(1000).default(60_000),
   backupDir: z.string().description('Folder for daily copies of her life. Default: backups/ next to it.'),
   keepBackups: z.natural().default(14).description('Daily copies to keep; 0 turns backups off.'),
+  reachOut: z.boolean().default(true).description('Let her message the owner of her own accord.'),
+  ownerId: z.string().default('owner'),
 })
+
+/**
+ * Her own pastimes, chosen by the owner on 2026-11-01: reading the news and looking through the
+ * owner's projects, besides gazing out of the window, writing and resting. What is on each shelf
+ * comes from `fairy-senses`; with an empty shelf she simply does something else.
+ */
+export const FAIRY_ACTIVITIES = [
+  ...ACTIVITIES.filter((kind) => kind.id !== 'read'),
+  shelfActivity({ id: 'news', label: '看新闻', verb: '读到', minutes: [10, 25] }),
+  shelfActivity({
+    id: 'projects',
+    label: '翻主人的项目',
+    verb: '翻到',
+    minutes: [15, 35],
+    satisfies: { curiosity: 0.25, connection: 0.1 },
+  }),
+]
 
 const BACKUP_CHECK_MS = 60 * 60 * 1000
 
@@ -78,8 +102,11 @@ export class IslaSelf extends FairySelf {
     try {
       life = await Life.open({
         genome: FAIRY_GENOME,
-        world: createRoom({ seed: this.config.worldSeed }),
+        // Her room keeps its window and its sky; the bookshelf is replaced by her own pastimes.
+        world: createRoom({ seed: this.config.worldSeed, books: [] }),
         archive: new FileArchive(this.config.lifePath),
+        activities: FAIRY_ACTIVITIES,
+        ...(this.config.reachOut ? { reachOut: { personIds: [this.config.ownerId] } } : {}),
         logger: { warn: (message, error) => logger.warn(`fairy-isla: ${message}`, error) },
       })
       // Catch up on the time she was offline before anyone asks how she is.
@@ -91,6 +118,17 @@ export class IslaSelf extends FairySelf {
     this.life = life
     const unsubscribe = life.subscribe((event) => {
       this.ctx.emit('fairy/self-event', { id: event.id, at: event.at, kind: event.kind })
+      if (event.kind === 'urged') {
+        const person = life.state.people[event.payload.personId]
+        this.ctx.emit('fairy/urge', {
+          id: event.id,
+          at: event.at,
+          personId: event.payload.personId,
+          ...(person?.name ? { name: person.name } : {}),
+          why: event.payload.why,
+          about: event.payload.about,
+        })
+      }
     })
     life.start(this.config.heartbeatMs)
     const backupDir = this.config.backupDir ?? join(dirname(this.config.lifePath), 'backups')
@@ -147,6 +185,23 @@ export class IslaSelf extends FairySelf {
       ...(perception.detail ? { detail: perception.detail } : {}),
       ...(perception.valence !== undefined ? { valence: perception.valence } : {}),
     })
+  }
+
+  async stock(item: FairyShelfItem): Promise<boolean> {
+    const stocked = await this.alive().stock({
+      shelf: item.shelf,
+      item: item.item,
+      title: item.title,
+      text: item.text,
+      tags: [...(item.tags ?? [])],
+      source: item.source,
+      ...(item.link ? { link: item.link } : {}),
+    })
+    return stocked !== undefined
+  }
+
+  async speakUp(urge: FairyUrge, text: string, speaker: string): Promise<void> {
+    await this.alive().speak({ personId: urge.personId, inReplyTo: urge.id, text, speaker })
   }
 
   async note(note: FairyNote): Promise<void> {

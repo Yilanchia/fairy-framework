@@ -37,9 +37,19 @@
       config:
         auditPath: !!js process.env.FAIRY_AUDIT_PATH
         ask: [destructive, outward, money]
-    # Placeholder for now; the file says what it will own.
+    # What she comes across outside the conversation. Nothing is read until the owner lists
+    # something: add feeds and project folders in the profile's own cordis.patch.yml, e.g.
+    #   - id: fairy-senses
+    #     config:
+    #       feeds: [{ url: 'https://example.com/feed.xml', name: 例子, tags: [科技] }]
+    #       projects: ['D:\code\my-project']
     - id: fairy-senses
       name: '@fairy/senses'
+      config:
+        feeds: []
+        projects: []
+        everyMinutes: 60
+        perSource: 5
 
 # ── the default agent is Fairy ─────────────────────────────────────────────────
 - id: agent-preset-registry

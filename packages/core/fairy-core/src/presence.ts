@@ -1,11 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import { renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
-import type { FairyPerson } from './index.js'
+import type { FairyPerson, FairyUrge } from './index.js'
 
 /**
  * Her presence in one agent. Mounted inside the Fairy agent preset, so it runs once per session
@@ -45,11 +46,46 @@ export const Config: z<Config> = z.object({
 interface Turn {
   /** Her `heard` event for the message this turn answers. */
   heard?: string
+  /** Or the urge of her own that this turn says out loud. */
+  urge?: FairyUrge
+  /** Urges sent into this session, waiting for their turn to start. */
+  pendingUrges: FairyUrge[]
   /** What was said to her, as the cue for what comes to mind. */
   cue?: string
   urgent?: string
   replies: string[]
   speaker?: string
+}
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** A turn Fairy starts herself, because she wanted to say something. */
+    'fairy-urge': { kind: 'fairy-urge'; urge: string }
+  }
+}
+
+const WHY_WORDS: Record<FairyUrge['why'], string> = {
+  pending: '你还有一件答应主人的事没办完',
+  share: '你刚看到一样东西，觉得主人会感兴趣',
+  missed: '你有一阵子没和主人说话了，想找他聊聊',
+}
+
+/** What the model sees for a turn she starts. Nobody typed it, and it says so. */
+export function renderUrge(urge: FairyUrge): string {
+  return [
+    '[FAIRY 主动开口]',
+    '这不是主人发来的消息，是你自己想主动找主人说话。',
+    `原因：${WHY_WORDS[urge.why]}——${urge.about}`,
+    '用一两句话开个头，像平时说话一样，别解释这条提示，也别重复上面的格式。如果你觉得现在不该打扰，就只回一个“…”。',
+  ].join('\n')
+}
+
+function urgeOf(messages: readonly UserMessage[]): string | undefined {
+  for (const message of messages) {
+    const source = message.source as { kind: string; urge?: string }
+    if (source.kind === 'fairy-urge' && source.urge) return source.urge
+  }
+  return undefined
 }
 
 /** What a person typed, as opposed to context the harness injected. */
@@ -71,10 +107,15 @@ export function apply(ctx: Context, config: Config) {
   const turns = new Map<Session, Turn>()
   const turnOf = (session: Session): Turn => {
     let turn = turns.get(session)
-    if (!turn) turns.set(session, (turn = { replies: [] }))
+    if (!turn) turns.set(session, (turn = { replies: [], pendingUrges: [] }))
     return turn
   }
-  ctx.on('session/disposed', (session) => void turns.delete(session))
+  // Her open conversations, so an urge can go to the one the owner used last.
+  const agents = new Map<Session, { agent: Agent; lastSeen: number }>()
+  ctx.on('session/disposed', (session) => {
+    turns.delete(session)
+    agents.delete(session)
+  })
 
   ctx.systemPrompt.section({
     name: 'fairy:identity',
@@ -100,12 +141,25 @@ export function apply(ctx: Context, config: Config) {
   ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next()
     if (decision.kind === 'reject') return decision
+    agents.set(payload.agent.session, { agent: payload.agent, lastSeen: Date.now() })
+    const turn = turnOf(payload.agent.session)
+    // A turn she starts herself answers one of her urges, not anything the owner said.
+    const urgeId = urgeOf(payload.messages)
+    if (urgeId) {
+      const index = turn.pendingUrges.findIndex((urge) => urge.id === urgeId)
+      if (index !== -1) {
+        turn.urge = turn.pendingUrges.splice(index, 1)[0]!
+        delete turn.heard
+        turn.replies = []
+      }
+      return decision
+    }
     const text = humanText(payload.messages)
     if (!text) return decision
-    const turn = turnOf(payload.agent.session)
     try {
       const heard = await ctx.fairySelf.hear(owner, text, `dsh-session:${payload.agent.session.id}`)
       turn.heard = heard.id
+      delete turn.urge
       turn.cue = text
       if (heard.urgent) turn.urgent = heard.urgent
       else delete turn.urgent
@@ -119,7 +173,7 @@ export function apply(ctx: Context, config: Config) {
 
   ctx.on('session/event', (session, event) => {
     const turn = turns.get(session)
-    if (!turn?.heard) return
+    if (!turn?.heard && !turn?.urge) return
     if (event.type === 'assistant/message') {
       const text = event.data.message.content
         .map((block) => (block.type === 'text' ? block.text : ''))
@@ -130,17 +184,39 @@ export function apply(ctx: Context, config: Config) {
       return
     }
     if (event.type !== 'turn/end') return
-    const inReplyTo = turn.heard
-    const text = turn.replies.join('\n\n').trim()
+    const { heard, urge } = turn
+    const text = clip(turn.replies.join('\n\n').trim(), config.maxRecordedChars)
     const speaker = turn.speaker ?? 'dsh'
     delete turn.heard
+    delete turn.urge
     delete turn.urgent
     turn.replies = []
-    // A turn that failed before saying anything leaves what she heard unanswered, as it was.
-    if (!text) return
-    ctx.fairySelf
-      .speak({ ...owner, inReplyTo, text: clip(text, config.maxRecordedChars), speaker })
-      .catch((error: unknown) => ctx.logger.warn('fairy-presence: could not record her reply', error))
+    // A turn that failed before saying anything leaves what she heard unanswered, as it was; an
+    // urge she decided not to act on ("…") was never said.
+    if (!text || (urge && /^[.…。\s]*$/u.test(text))) return
+    const recorded = heard
+      ? ctx.fairySelf.speak({ ...owner, inReplyTo: heard, text, speaker })
+      : ctx.fairySelf.speakUp(urge!, text, speaker)
+    recorded.catch((error: unknown) => ctx.logger.warn('fairy-presence: could not record her reply', error))
+  })
+
+  // She wants to talk to the owner of her own accord: carry it into the conversation they last
+  // had with her, as a turn of its own that she starts.
+  ctx.on('fairy/urge', (urge) => {
+    if (urge.personId !== owner.personId) return
+    const target = [...agents.values()].sort((left, right) => right.lastSeen - left.lastSeen)[0]
+    if (!target) {
+      ctx.logger.info(`fairy-presence: she wanted to say something (${urge.about}) but no conversation is open`)
+      return
+    }
+    const turn = turnOf(target.agent.session)
+    turn.pendingUrges.push(urge)
+    target.agent.followup(
+      createUserMessage({
+        content: [{ type: 'text', text: renderUrge(urge) }],
+        source: { kind: 'fairy-urge', urge: urge.id },
+      }),
+    )
   })
 
   ctx.tools.register(

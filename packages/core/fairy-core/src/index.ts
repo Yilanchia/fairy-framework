@@ -17,6 +17,12 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'fairy/self-event'(event: FairySelfEvent): void
+    /**
+     * She wants to talk to someone of her own accord. The host's job is to get it to them, e.g.
+     * as a turn in the conversation they last had with her.
+     * @mode emit
+     */
+    'fairy/urge'(urge: FairyUrge): void
   }
 }
 
@@ -147,4 +153,32 @@ export abstract class FairySelf extends Service {
   abstract remember(query: string, person?: FairyPerson): Promise<FairyMemory[]>
   /** She keeps something she was told, resting on what `note.source` heard. */
   abstract note(note: FairyNote): Promise<void>
+  /**
+   * Puts something on one of her shelves for her to get to in her own time.
+   * @returns false when she already has it.
+   */
+  abstract stock(item: FairyShelfItem): Promise<boolean>
+  /** Records what she said to someone of her own accord, against the urge it answers. */
+  abstract speakUp(urge: FairyUrge, text: string, speaker: string): Promise<void>
+}
+
+/** Something for one of her shelves: an article, a commit. */
+export interface FairyShelfItem {
+  readonly shelf: string
+  /** The source's own id, so it is never brought twice. */
+  readonly item: string
+  readonly title: string
+  readonly text: string
+  readonly tags?: readonly string[]
+  readonly source: string
+  readonly link?: string
+}
+
+/** She wants to say something to someone who is not talking to her right now. */
+export interface FairyUrge extends FairyPerson {
+  readonly id: string
+  readonly at: number
+  /** `missed` her, `share` something she came across, `pending` something she still owes them. */
+  readonly why: 'missed' | 'share' | 'pending'
+  readonly about: string
 }

@@ -15,6 +15,7 @@ import {
   type FairyPerson,
   type FairySpeech,
   type FairyStatus,
+  type FairyUrge,
 } from './index.js'
 import * as presence from './presence.js'
 
@@ -38,7 +39,14 @@ class StubSelf extends FairySelf {
     return facts
   }
   readonly where: Array<string | undefined> = []
+  readonly urged: Array<{ urge: FairyUrge; text: string }> = []
   async perceive(): Promise<void> {}
+  async stock(): Promise<boolean> {
+    return true
+  }
+  async speakUp(urge: FairyUrge, text: string): Promise<void> {
+    this.urged.push({ urge, text })
+  }
   async hear(person: FairyPerson, text: string, where?: string): Promise<FairyHeard> {
     this.heard.push({ person, text })
     this.where.push(where)
@@ -76,7 +84,8 @@ async function host() {
 /** Just enough of an agent and its session for what presence reads. */
 function agent() {
   const session = { id: 's-1' } as unknown as Session
-  return { session, agent: { session } as unknown as Agent }
+  const followups: UserMessage[] = []
+  return { session, followups, agent: { session, followup: (message: UserMessage) => followups.push(message) } as unknown as Agent }
 }
 
 function message(text: string, kind = 'user'): UserMessage {
@@ -212,6 +221,46 @@ test('fairy_note keeps what the owner said in this turn, and nothing else', asyn
   const pending = await note({ topic: '护照', text: '提醒主人续护照', pending: true })
   assert.equal(pending.isError, false)
   assert.equal((self.notes as FairyNote[])[1]?.pending, true)
+})
+
+test('an urge of hers becomes a turn she starts in the last conversation, and her words are kept', async () => {
+  const { ctx, self } = await host()
+  const target = agent()
+  // Nowhere to say it yet: nothing happens.
+  const urge = { id: 'e50', at: 0, personId: 'owner', name: '主人', why: 'share' as const, about: '一篇讲芯片的文章' }
+  ctx.emit('fairy/urge', urge)
+  assert.equal(target.followups.length, 0)
+
+  await preStep(ctx, target, [message('在吗')])
+  emit(ctx, target, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await settle()
+  ctx.emit('fairy/urge', urge)
+  assert.equal(target.followups.length, 1)
+  const turn = target.followups[0]!
+  assert.deepEqual(turn.source, { kind: 'fairy-urge', urge: 'e50' })
+  assert.match(JSON.stringify(turn.content), /不是主人发来的消息/)
+
+  // The harness runs it: not heard as something the owner said, and her words go to speakUp.
+  const heardBefore = self.heard.length
+  await preStep(ctx, target, [turn])
+  assert.equal(self.heard.length, heardBefore)
+  reply(ctx, target, '主人，刚看到一篇芯片的文章，你应该会感兴趣。')
+  emit(ctx, target, 'turn/end', { turn: 2, reason: { kind: 'completed' } })
+  await settle()
+  assert.deepEqual(self.urged.map((item) => [item.urge.id, item.text]), [['e50', '主人，刚看到一篇芯片的文章，你应该会感兴趣。']])
+})
+
+test('an urge she decides not to act on is not recorded as said', async () => {
+  const { ctx, self } = await host()
+  const target = agent()
+  await preStep(ctx, target, [message('在吗')])
+  emit(ctx, target, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  ctx.emit('fairy/urge', { id: 'e60', at: 0, personId: 'owner', why: 'missed', about: '好久没说话了' })
+  await preStep(ctx, target, [target.followups[0]!])
+  reply(ctx, target, '…')
+  emit(ctx, target, 'turn/end', { turn: 2, reason: { kind: 'completed' } })
+  await settle()
+  assert.equal(self.urged.length, 0)
 })
 
 test('unloading her presence takes everything it registered with it', async () => {

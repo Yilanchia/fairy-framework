@@ -1,15 +1,114 @@
 import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import type {} from '@fairy/core'
+import { parseFeed } from './feed.js'
+import { readProject } from './projects.js'
+
+export { parseFeed, plain, type FeedItem } from './feed.js'
+export { parseLog, readProject, subjects, type ProjectItem } from './projects.js'
 
 /**
- * Fairy's senses. Placeholder: mounted on the host so the slot exists from day one.
+ * Fairy's senses: what she comes across outside the conversation. Mounted on the host.
  *
- * It will turn what happens around her (machine state, notifications, calendars, pages she
- * watches) into perceptions with `ctx.fairySelf.perceive({ source, what, detail, valence })`.
- * Each enters her life as a logged event, so it stays replayable. Asleep she notices nothing;
- * what she feels about it is her own, the sense's `valence` only nudges it; the same thing many
- * times a day stops being news. Which senses to give her, and with what consent, is the owner's
- * call: none are on yet.
+ * Today two, both chosen by the owner on 2026-11-01:
+ * - `feeds`: news from the RSS or Atom feeds listed here, onto her `news` shelf.
+ * - `projects`: the latest commits of the git repositories listed here, onto her `projects`
+ *   shelf. Read-only: `git log`, nothing else.
+ *
+ * Nothing is read until the owner lists something. What she does with it, and when, is up to her.
  */
 export const name = 'fairy-senses'
+export const inject = ['fairySelf']
 
-export function apply(_ctx: Context) {}
+export interface Feed {
+  url: string
+  /** Shown as where it came from; default the feed's host. */
+  name?: string
+  /** Added to every item's tags, e.g. `科技`. */
+  tags?: string[]
+}
+
+export interface Config {
+  feeds: Feed[]
+  /** Absolute paths of git repositories she may look through. */
+  projects: string[]
+  /** How often to look, in minutes. */
+  everyMinutes: number
+  /** At most this many new things per source per look, so one busy feed does not crowd out the rest. */
+  perSource: number
+}
+
+export const Config: z<Config> = z.object({
+  feeds: z
+    .array(z.object({ url: z.string().required(), name: z.string(), tags: z.array(z.string()) }))
+    .default([])
+    .description('RSS or Atom feeds for her news shelf.'),
+  projects: z.array(z.string()).default([]).description('Git repositories she may look through, read-only.'),
+  everyMinutes: z.natural().min(5).default(60),
+  perSource: z.natural().min(1).default(5),
+})
+
+const SUMMARY_CHARS = 400
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+export function apply(ctx: Context, config: Config) {
+  const look = async () => {
+    for (const feed of config.feeds) {
+      try {
+        const response = await fetch(feed.url, { signal: AbortSignal.timeout(20_000), headers: { 'user-agent': 'fairy-senses' } })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const items = parseFeed(await response.text())
+          .sort((left, right) => (left.at ?? 0) - (right.at ?? 0))
+          .slice(-config.perSource)
+        const source = feed.name ?? hostOf(feed.url)
+        for (const item of items) {
+          await ctx.fairySelf.stock({
+            shelf: 'news',
+            item: `${feed.url}#${item.id}`,
+            title: item.title,
+            text: item.summary.slice(0, SUMMARY_CHARS),
+            tags: [...(feed.tags ?? []), ...item.tags].slice(0, 6),
+            source,
+            ...(item.link ? { link: item.link } : {}),
+          })
+        }
+      } catch (error) {
+        ctx.logger.warn(`fairy-senses: could not read ${feed.url}`, error)
+      }
+    }
+    for (const dir of config.projects) {
+      try {
+        // Oldest first, so she comes across a project's history in the order it happened.
+        for (const item of (await readProject(dir, config.perSource)).reverse()) {
+          await ctx.fairySelf.stock({ shelf: 'projects', item: item.id, title: item.title, text: item.text, tags: item.tags, source: item.source })
+        }
+      } catch (error) {
+        ctx.logger.warn(`fairy-senses: could not look through ${dir}`, error)
+      }
+    }
+  }
+  if (config.feeds.length === 0 && config.projects.length === 0) {
+    ctx.logger.info('fairy-senses: no feeds or projects listed yet; her news and projects shelves stay empty')
+    return
+  }
+  let running: Promise<void> | undefined
+  const tick = () => {
+    // One look at a time; a slow feed must not pile up behind itself.
+    running ??= look().finally(() => (running = undefined))
+  }
+  const first = setTimeout(tick, 10_000)
+  const timer = setInterval(tick, config.everyMinutes * 60_000)
+  first.unref?.()
+  timer.unref?.()
+  ctx.effect(() => () => {
+    clearTimeout(first)
+    clearInterval(timer)
+  }, 'fairy-senses.timer')
+}
