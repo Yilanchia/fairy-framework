@@ -13,11 +13,23 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseEnv } from 'node:util'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const profile = 'fairy'
 const dshBin = join(root, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 const bundleDir = join(root, 'packages', 'bundle', 'fairy-bundle')
+
+/**
+ * Her own `.env` (gitignored), for the child process only: nothing is written to the system
+ * environment. Variables already set in the environment win; empty values are skipped, so the
+ * blank `DEEPSEEK_API_KEY=` from `.env.example` does not hide a key set elsewhere.
+ */
+function ownEnv() {
+  const file = join(root, '.env')
+  if (!existsSync(file)) return {}
+  return Object.fromEntries(Object.entries(parseEnv(readFileSync(file, 'utf8'))).filter(([, value]) => value !== ''))
+}
 
 function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
   if (/[^\x00-\x7f]/u.test(home)) {
@@ -28,6 +40,7 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
     home,
     lifePath,
     env: {
+      ...ownEnv(),
       ...process.env,
       DSH_HOME: home,
       DSH_AGENTS_HOME: join(home, 'agents'),
