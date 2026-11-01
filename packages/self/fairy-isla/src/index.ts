@@ -1,4 +1,13 @@
-import { FairySelf, type FairyFact, type FairyIdentity, type FairyStatus } from '@fairy/core'
+import {
+  FairySelf,
+  type FairyFact,
+  type FairyHeard,
+  type FairyIdentity,
+  type FairyMemory,
+  type FairyPerson,
+  type FairySpeech,
+  type FairyStatus,
+} from '@fairy/core'
 import type { Context } from '@deepseek-ai/cordis'
 import { Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -6,10 +15,10 @@ import { createRoom, FileArchive, Life } from '@isla/life'
 import { isAbsolute } from 'node:path'
 import { FAIRY_GENOME } from './genome.js'
 import { lockLife } from './lock.js'
-import { toFacts, toIdentity, toStatus } from './translate.js'
+import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 
 export { FAIRY_GENOME, FAIRY_GENOME_INPUT } from './genome.js'
-export { toFacts, toIdentity, toStatus } from './translate.js'
+export { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 
 export interface Config {
   /** Absolute path of her life log. The file is her: back it up, never commit it. */
@@ -30,10 +39,10 @@ export const Config: z<Config> = z.object({
  * Fairy's self as an Isla life. Mounted once on the host, so every session and every device that
  * reaches this host talks to the same her.
  *
- * Read-only for now: sessions read her state and facts, they do not write into her life yet. The
- * write seams (external perceptions, words spoken by the agent, being woken up) belong in Isla.
- * Her Isla mind stays the built-in inner mind, which never calls a model; she lives on her own
- * without spending tokens.
+ * Conversations enter her life: what the owner says is heard (`listen()`), what the DSH agent
+ * says back is recorded (`speak()`), and her memory is Isla's, searched with `remember()`. Her
+ * Isla mind stays the built-in inner mind, which never calls a model; she lives on her own
+ * without spending tokens. External perceptions (`perceive()`) are still missing in Isla.
  */
 export class IslaSelf extends FairySelf {
   static Config = Config
@@ -88,8 +97,27 @@ export class IslaSelf extends FairySelf {
     return toStatus(this.alive().state)
   }
 
-  facts(): FairyFact[] {
-    return toFacts(this.alive().facts())
+  facts(options: { readonly personId?: string; readonly cue?: string } = {}): FairyFact[] {
+    return toFacts(this.alive().facts({ ...options }))
+  }
+
+  async hear(person: FairyPerson, text: string): Promise<FairyHeard> {
+    const { heard, said } = await this.alive().listen({ ...person, text })
+    // listen() answers by itself only with the fixed crisis reply.
+    return { id: heard.id, ...(said ? { urgent: said.payload.text } : {}) }
+  }
+
+  async speak(speech: FairySpeech): Promise<void> {
+    await this.alive().speak({
+      personId: speech.personId,
+      inReplyTo: speech.inReplyTo,
+      text: speech.text,
+      speaker: speech.speaker,
+    })
+  }
+
+  async remember(query: string, person?: FairyPerson): Promise<FairyMemory[]> {
+    return toMemories(await this.alive().remember({ text: query, ...(person ? { personId: person.personId } : {}) }))
   }
 
   private alive(): Life {

@@ -47,6 +47,40 @@ test('her first start is her birth, and she is the same her after a restart', as
   await reopened.dispose()
 })
 
+test('what she hears and says goes into her life, and she can find it again', async () => {
+  const lifePath = join(dir, 'talk.life.jsonl')
+  const ctx = new Context()
+  const fiber = ctx.plugin(IslaSelf, config(lifePath))
+  await fiber.await()
+  const self = ctx.fairySelf
+  const owner = { personId: 'owner', name: '主人' }
+
+  const heard = await self.hear(owner, '我对花生过敏，以后买零食帮我看着点')
+  assert.equal(heard.urgent, undefined)
+  await self.speak({ ...owner, inReplyTo: heard.id, text: '记下了，主人。', speaker: 'dsh:test' })
+  // She is awake now, whatever the hour: being talked to wakes her.
+  assert.equal(self.status().asleep, false)
+
+  const found = await self.remember('花生', owner)
+  assert.equal(found[0]?.id, heard.id)
+  assert.equal(found[0]?.clarity, 'clear')
+  assert.ok(self.facts({ personId: 'owner' }).some((fact) => fact.text.includes('记下了，主人。')))
+
+  const crisis = await self.hear(owner, '我不想活了')
+  assert.ok(crisis.urgent && crisis.urgent.length > 10)
+  await fiber.dispose()
+
+  // All of it is in the file, and survives a restart.
+  const kinds = readFileSync(lifePath, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as { kind: string; payload: { external?: boolean; mind?: string } })
+  const said = kinds.filter((event) => event.kind === 'said')
+  assert.ok(said.some((event) => event.payload.external === true && event.payload.mind === 'dsh:test'))
+  assert.ok(said.some((event) => event.payload.mind === 'safety'))
+  assert.ok(kinds.some((event) => event.kind === 'recalled'))
+})
+
 test('a relative life path is rejected', async () => {
   const ctx = new Context()
   await assert.rejects(ctx.plugin(IslaSelf, config('fairy.life.jsonl')).await(), /must be absolute/)

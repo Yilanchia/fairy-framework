@@ -1,5 +1,5 @@
-import type { FairyFact, FairyIdentity, FairyStatus } from '@fairy/core'
-import type { Fact, LifeState } from '@isla/life'
+import type { FairyFact, FairyIdentity, FairyMemory, FairyStatus } from '@fairy/core'
+import type { Fact, LifeState, Recollection } from '@isla/life'
 
 /**
  * Pure translations from an Isla life to Fairy's vocabulary. Kept apart from the service so they
@@ -23,4 +23,8 @@ export function toStatus(state: LifeState): FairyStatus {
 
 export function toFacts(facts: readonly Fact[]): FairyFact[] {
   return facts.map(({ id, text }) => ({ id, text }))
+}
+
+export function toMemories(recollections: readonly Recollection[]): FairyMemory[] {
+  return recollections.map(({ id, at, clarity, text }) => ({ id, at, clarity, text }))
 }

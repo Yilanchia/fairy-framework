@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { renderIdentity, renderSelfContext, renderStatus } from './render.js'
+import { renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
 
 test('identity carries name, origin and voice', () => {
   const text = renderIdentity({ name: 'Fairy', origin: '诞生于新艾利都的网络深处', voice: '毒舌，但可靠' })
@@ -26,6 +26,22 @@ test('self context lists every fact with its id and forbids making things up', (
 
 test('self context is empty when there is nothing to ground on', () => {
   assert.equal(renderSelfContext([]), '')
+})
+
+test('a crisis reply comes first, word for word', () => {
+  const text = renderSelfContext([{ id: 'state:mood', text: '你现在心情平平' }], '请现在就联系一个你信任的人。')
+  assert.ok(text.startsWith('# 必须先做的事'))
+  assert.ok(text.indexOf('请现在就联系一个你信任的人。') < text.indexOf('# 你此刻的真实状态'))
+})
+
+test('memories say how clearly she has them, and say so when there are none', () => {
+  const text = renderMemories('花生', [
+    { id: 'e9', at: 0, clarity: 'clear', text: '11月2日 10:30 主人对你说：我对花生过敏' },
+    { id: 'e40', at: 0, clarity: 'faint', text: '记不太清了，好像是几个星期前，你写了：花生酱…' },
+  ])
+  assert.match(text, /\[e9\]（清楚）11月2日/)
+  assert.match(text, /\[e40\]（很淡）记不太清了/)
+  assert.match(renderMemories('猫', []), /什么也没找到/)
 })
 
 test('status reads as plain text', () => {

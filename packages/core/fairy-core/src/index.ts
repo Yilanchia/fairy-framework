@@ -55,6 +55,39 @@ export interface FairySelfEvent {
   readonly kind: string
 }
 
+/** Someone she talks with. */
+export interface FairyPerson {
+  readonly personId: string
+  readonly name?: string
+}
+
+/** What `hear()` recorded. */
+export interface FairyHeard {
+  /** Pass to `speak()` as `inReplyTo`. */
+  readonly id: string
+  /**
+   * Words she must say first, exactly as given: the fixed reply when someone seems to be in
+   * danger. Absent otherwise.
+   */
+  readonly urgent?: string
+}
+
+export interface FairySpeech extends FairyPerson {
+  readonly inReplyTo: string
+  readonly text: string
+  /** Who put the words together, e.g. `dsh:deepseek-v4`. */
+  readonly speaker: string
+}
+
+/** One memory as she has it right now. */
+export interface FairyMemory {
+  readonly id: string
+  readonly at: number
+  /** `clear`: word for word. `vague`: the gist. `faint`: barely. */
+  readonly clarity: 'clear' | 'vague' | 'faint'
+  readonly text: string
+}
+
 /**
  * The seam between Fairy's body (DeepSeek Harness: agents, tools, sessions) and her self: one
  * persistent identity shared by every conversation. Providers extend this class; consumers
@@ -67,6 +100,15 @@ export abstract class FairySelf extends Service {
 
   abstract identity(): FairyIdentity
   abstract status(): FairyStatus
-  /** The only things she may state about herself right now. */
-  abstract facts(): FairyFact[]
+  /**
+   * The only things she may state about herself right now. With a `cue` (usually what was just
+   * said), older things it brings to mind are included.
+   */
+  abstract facts(options?: { readonly personId?: string; readonly cue?: string }): FairyFact[]
+  /** Someone says something to her. She wakes up if she was asleep. */
+  abstract hear(person: FairyPerson, text: string): Promise<FairyHeard>
+  /** Records what was said back, so it becomes part of her life. */
+  abstract speak(speech: FairySpeech): Promise<void>
+  /** She searches her memory on purpose; what she finds stays clearer afterwards. */
+  abstract remember(query: string, person?: FairyPerson): Promise<FairyMemory[]>
 }

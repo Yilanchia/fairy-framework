@@ -1,4 +1,4 @@
-import type { FairyFact, FairyIdentity, FairyStatus } from './index.js'
+import type { FairyFact, FairyIdentity, FairyMemory, FairyStatus } from './index.js'
 
 /** Stable for a life, so it can sit in the cached part of the system prompt. */
 export function renderIdentity(identity: FairyIdentity): string {
@@ -9,12 +9,33 @@ export function renderIdentity(identity: FairyIdentity): string {
 }
 
 /** Changes from moment to moment; DeepSeek Harness carries it as dynamic context. */
-export function renderSelfContext(facts: readonly FairyFact[]): string {
-  if (facts.length === 0) return ''
+export function renderSelfContext(facts: readonly FairyFact[], urgent?: string): string {
+  const lines: string[] = []
+  if (urgent) {
+    lines.push(
+      '# 必须先做的事',
+      '对方的话里可能有伤害自己的念头。回复的第一段必须一字不差地是下面这段话，然后再关心对方：',
+      urgent,
+      '',
+    )
+  }
+  if (facts.length > 0) {
+    lines.push(
+      '# 你此刻的真实状态（来自你的生命日志）',
+      '谈到你自己（心情、精力、在做什么、喜欢什么、经历过什么、和主人聊过什么）时，只能依据下面这些事实；这里没有的，可以用 fairy_recall 查，查不到就说不记得，不要编造。以“你想起：”开头的是刚被这句话勾起的记忆，“记不太清了”的就照实说记不太清。',
+      ...facts.map((fact) => `[${fact.id}] ${fact.text}`),
+    )
+  }
+  return lines.join('\n')
+}
+
+const CLARITY_WORDS: Record<FairyMemory['clarity'], string> = { clear: '清楚', vague: '模糊', faint: '很淡' }
+
+export function renderMemories(query: string, memories: readonly FairyMemory[]): string {
+  if (memories.length === 0) return `关于「${query}」，你的记忆里什么也没找到。`
   return [
-    '# 你此刻的真实状态（来自你的生命日志）',
-    '谈到你自己（心情、精力、在做什么、喜欢什么、经历过什么）时，只能依据下面这些事实；这里没有的，就说不知道或不记得，不要编造。',
-    ...facts.map((fact) => `[${fact.id}] ${fact.text}`),
+    `关于「${query}」，你想起了这些（按相关程度排列）：`,
+    ...memories.map((memory) => `[${memory.id}]（${CLARITY_WORDS[memory.clarity]}）${memory.text}`),
   ].join('\n')
 }
 
