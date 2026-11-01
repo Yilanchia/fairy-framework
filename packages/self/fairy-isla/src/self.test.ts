@@ -66,6 +66,11 @@ test('what she hears and says goes into her life, and she can find it again', as
   assert.equal(found[0]?.clarity, 'clear')
   assert.ok(self.facts({ personId: 'owner' }).some((fact) => fact.text.includes('记下了，主人。')))
 
+  await self.note({ ...owner, topic: '饮食禁忌', text: '主人对花生过敏，不能吃含花生的东西', source: heard.id })
+  assert.ok(self.facts({ personId: 'owner' }).some((fact) => fact.text.includes('（饮食禁忌）：主人对花生过敏')))
+  assert.equal((await self.remember('我不能吃什么', owner))[0]?.text.includes('不能吃含花生的东西'), true)
+  await assert.rejects(self.note({ ...owner, topic: 'x', text: 'y', source: 'e1' }))
+
   const crisis = await self.hear(owner, '我不想活了')
   assert.ok(crisis.urgent && crisis.urgent.length > 10)
   await fiber.dispose()

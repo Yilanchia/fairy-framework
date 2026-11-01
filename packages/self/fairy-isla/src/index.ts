@@ -4,6 +4,7 @@ import {
   type FairyHeard,
   type FairyIdentity,
   type FairyMemory,
+  type FairyNote,
   type FairyPerson,
   type FairySpeech,
   type FairyStatus,
@@ -113,6 +114,17 @@ export class IslaSelf extends FairySelf {
       inReplyTo: speech.inReplyTo,
       text: speech.text,
       speaker: speech.speaker,
+    })
+  }
+
+  async note(note: FairyNote): Promise<void> {
+    await this.alive().note({
+      personId: note.personId,
+      topic: note.topic,
+      text: note.text,
+      source: note.source,
+      ...(note.pending ? { pending: true } : {}),
+      ...(note.done ? { done: true } : {}),
     })
   }
 

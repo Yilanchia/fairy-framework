@@ -79,6 +79,19 @@ export interface FairySpeech extends FairyPerson {
   readonly speaker: string
 }
 
+/** Something she decides to keep about someone. */
+export interface FairyNote extends FairyPerson {
+  /** A short key; a later note on the same topic replaces this one. */
+  readonly topic: string
+  readonly text: string
+  /** The `FairyHeard.id` it comes from. */
+  readonly source: string
+  /** Still to be done: a request, a promise, a reminder. */
+  readonly pending?: boolean
+  /** Closes what was pending on this topic. */
+  readonly done?: boolean
+}
+
 /** One memory as she has it right now. */
 export interface FairyMemory {
   readonly id: string
@@ -111,4 +124,6 @@ export abstract class FairySelf extends Service {
   abstract speak(speech: FairySpeech): Promise<void>
   /** She searches her memory on purpose; what she finds stays clearer afterwards. */
   abstract remember(query: string, person?: FairyPerson): Promise<FairyMemory[]>
+  /** She keeps something she was told, resting on what `note.source` heard. */
+  abstract note(note: FairyNote): Promise<void>
 }

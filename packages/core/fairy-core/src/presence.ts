@@ -183,4 +183,39 @@ export function apply(ctx: Context, config: Config) {
       },
     }),
   )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'fairy_note',
+      description:
+        'Keep something the owner just told you, in Fairy\'s own life: a fact about them (allergies, family, preferences, ' +
+        'accounts, plans), a request, or something you promised to do. It must come from what the owner said in this turn. ' +
+        'Write it in plain words with the key nouns ("主人对花生过敏，不能吃含花生的东西"). One topic per note; a new note ' +
+        'on the same topic replaces the old one. Use pending for things still to be done and done when they are. ' +
+        'For a reminder at a set time, also schedule it with the schedule tool.',
+      parameters: {
+        topic: { type: 'string', required: true, description: 'A short key, e.g. 饮食禁忌, 生日:母亲, 护照.' },
+        text: { type: 'string', required: true, description: 'What to keep, one or two sentences, in plain words.' },
+        pending: { type: 'boolean', description: 'Something still to be done.' },
+        done: { type: 'boolean', description: 'What was pending on this topic is done.' },
+      },
+      output: {
+        schema: { type: 'string' },
+        render: (_args, value) => [{ type: 'text', text: value }],
+      },
+      async execute({ topic, text, pending, done }, exec) {
+        const source = exec.agent ? turns.get(exec.agent.session)?.heard : undefined
+        if (!source) throw new Error('fairy_note: only what the owner said in this turn can be kept')
+        await ctx.fairySelf.note({
+          ...owner,
+          topic,
+          text,
+          source,
+          ...(pending ? { pending: true } : {}),
+          ...(done ? { done: true } : {}),
+        })
+        return `记下了（${topic}）：${text}`
+      },
+    }),
+  )
 }

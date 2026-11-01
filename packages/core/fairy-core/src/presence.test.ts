@@ -11,6 +11,7 @@ import {
   type FairyHeard,
   type FairyIdentity,
   type FairyMemory,
+  type FairyNote,
   type FairyPerson,
   type FairySpeech,
   type FairyStatus,
@@ -42,6 +43,10 @@ class StubSelf extends FairySelf {
   }
   async speak(speech: FairySpeech): Promise<void> {
     this.spoken.push(speech)
+  }
+  readonly notes: FairyNote[] = []
+  async note(note: FairyNote): Promise<void> {
+    this.notes.push(note)
   }
   async remember(query: string): Promise<FairyMemory[]> {
     this.searched.push(query)
@@ -177,6 +182,31 @@ test('fairy_status and fairy_recall run through the real tool pipeline', async (
   assert.equal(recall.isError, false)
   assert.deepEqual(self.searched, ['花生'])
   assert.match(String(recall.value), /\[e9\]（清楚）11月2日 10:30 主人对你说：我对花生过敏/)
+})
+
+test('fairy_note keeps what the owner said in this turn, and nothing else', async () => {
+  const { ctx, self } = await host()
+  const target = agent()
+  const note = (args: Record<string, unknown>) =>
+    ctx.tools.execute({
+      callId: 'call-note' as ToolExecutionInput['callId'],
+      name: 'fairy_note',
+      arguments: args,
+      agent: target.agent,
+      signal: new AbortController().signal,
+    })
+  // No message from the owner yet: there is nothing it could rest on.
+  assert.equal((await note({ topic: '饮食禁忌', text: '主人对花生过敏' })).isError, true)
+
+  await preStep(ctx, target, [message('我对花生过敏')])
+  const kept = await note({ topic: '饮食禁忌', text: '主人对花生过敏，不能吃含花生的东西' })
+  assert.equal(kept.isError, false)
+  assert.deepEqual(self.notes, [
+    { personId: 'owner', name: '主人', topic: '饮食禁忌', text: '主人对花生过敏，不能吃含花生的东西', source: 'e101' },
+  ])
+  const pending = await note({ topic: '护照', text: '提醒主人续护照', pending: true })
+  assert.equal(pending.isError, false)
+  assert.equal((self.notes as FairyNote[])[1]?.pending, true)
 })
 
 test('unloading her presence takes everything it registered with it', async () => {
