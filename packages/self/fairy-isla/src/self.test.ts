@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import IslaSelf, { type Config } from './index.js'
+import IslaSelf, { formatInspection, inspect, readLife, type Config } from './index.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'fairy-self-'))
 after(() => rmSync(dir, { recursive: true, force: true }))
@@ -93,6 +93,27 @@ test('what she hears and says goes into her life, and she can find it again', as
   assert.ok(said.some((event) => event.payload.external === true && event.payload.mind === 'dsh:test'))
   assert.ok(said.some((event) => event.payload.mind === 'safety'))
   assert.ok(kinds.some((event) => event.kind === 'recalled'))
+})
+
+test('her memory can be looked at without touching her life', async () => {
+  const lifePath = join(dir, 'look.life.jsonl')
+  const ctx = new Context()
+  const fiber = ctx.plugin(IslaSelf, config(lifePath))
+  await fiber.await()
+  const owner = { personId: 'owner', name: '主人' }
+  const heard = await ctx.fairySelf.hear(owner, '我对花生过敏', 'dsh-session:s-9')
+  await ctx.fairySelf.note({ ...owner, topic: '饮食禁忌', text: '主人对花生过敏', source: heard.id })
+  await fiber.dispose()
+
+  // A half-written last line, as after a crash: read past, never cut off.
+  appendFileSync(lifePath, '{"id":"e9999","seq":')
+  const before = readFileSync(lifePath, 'utf8')
+  const report = formatInspection(inspect(readLife(lifePath), '花生'), '花生')
+  assert.equal(readFileSync(lifePath, 'utf8'), before)
+  assert.match(report, /关于主人记下的事：\n {2}饮食禁忌：主人对花生过敏/u)
+  assert.match(report, /搜索「花生」：\n {2}\[e\d+\] \(清楚/u)
+  assert.match(report, /← dsh-session:s-9/u)
+  assert.ok(!readFileSync(lifePath, 'utf8').includes('"kind":"recalled"'), 'looking is not remembering')
 })
 
 test('a relative life path is rejected', async () => {

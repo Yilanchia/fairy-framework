@@ -49,6 +49,7 @@ pnpm fairy
 | `pnpm test` | 单元测试和集成测试（真实的 DSH SystemPrompt / ToolRuntime、真实的 Isla 生命） |
 | `pnpm smoke` | 在临时 home 里真实启动一次 DSH，确认 Web 起来、她出生了，然后清理掉 |
 | `pnpm dump` | 打印 DSH 组合出来的完整插件树 |
+| `pnpm memory [词]` | 看她记下了主人哪些事、对自己有什么认识；带上词就按她主动回想的方式搜一遍。只读，不加锁，她运行时也能用，不会让她“想起”任何事。看备份就把 `FAIRY_LIFE_PATH` 指向那个副本 |
 
 ## 她住在哪
 

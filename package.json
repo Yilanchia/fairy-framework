@@ -14,7 +14,8 @@
     "setup:profile": "tsc -b && node scripts/fairy.mjs setup",
     "dump": "node scripts/fairy.mjs dump",
     "fairy": "tsc -b && node scripts/fairy.mjs web",
-    "smoke": "tsc -b && node scripts/fairy.mjs smoke"
+    "smoke": "tsc -b && node scripts/fairy.mjs smoke",
+    "memory": "tsc -b && node scripts/fairy.mjs memory"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.5",

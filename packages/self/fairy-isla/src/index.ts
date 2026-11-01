@@ -22,6 +22,7 @@ import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 
 export { FAIRY_GENOME, FAIRY_GENOME_INPUT } from './genome.js'
 export { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
+export { formatInspection, inspect, readLife, type Inspection } from './inspect.js'
 
 export interface Config {
   /** Absolute path of her life log. The file is her: back it up, never commit it. */

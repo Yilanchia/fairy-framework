@@ -7,6 +7,7 @@
 //   node scripts/fairy.mjs dump    print the composed plugin tree
 //   node scripts/fairy.mjs web     serve the Web UI on Fairy's own port (default 3090)
 //   node scripts/fairy.mjs smoke   boot once in a throwaway home and check she comes alive
+//   node scripts/fairy.mjs memory [query]   what she keeps, and what a search finds (read-only)
 import { spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -131,6 +132,13 @@ try {
     process.exitCode = await start(at, ['--profile', profile, '--port', port, ...process.argv.slice(3)]).done
   } else if (command === 'smoke') {
     await smoke()
+  } else if (command === 'memory') {
+    // Read-only: no lock, no writes, safe while she is running. Pass a backup path in
+    // FAIRY_LIFE_PATH to look at an old copy.
+    if (!existsSync(at.lifePath)) throw new Error(`no life at ${at.lifePath}: she has not been born yet`)
+    const { formatInspection, inspect, readLife } = await import('../packages/self/fairy-isla/dist/index.js')
+    const query = process.argv.slice(3).join(' ').trim() || undefined
+    console.log(formatInspection(inspect(readLife(at.lifePath), query), query))
   } else {
     throw new Error(`unknown command ${command}`)
   }
