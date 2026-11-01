@@ -48,6 +48,8 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
       DSH_TELEMETRY_MODE: process.env.DSH_TELEMETRY_MODE ?? 'DISABLED',
       FAIRY_DOCUMENTS: join(home, 'documents'),
       FAIRY_LIFE_PATH: lifePath,
+      // What her hands did, one JSON line per tool call. Next to her home, never in the repo.
+      FAIRY_AUDIT_PATH: join(home, 'audit.jsonl'),
     },
   }
 }

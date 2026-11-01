@@ -30,9 +30,14 @@
         lifePath: !!js process.env.FAIRY_LIFE_PATH
         worldSeed: fairy-room
         heartbeatMs: 60000
-    # Placeholders for now; each file says what it will own.
+    # Asks the owner before deleting, sending anything away, or touching money and secrets,
+    # whatever DSH's own approval policy says, and logs every tool call.
     - id: fairy-guard
       name: '@fairy/guard'
+      config:
+        auditPath: !!js process.env.FAIRY_AUDIT_PATH
+        ask: [destructive, outward, money]
+    # Placeholder for now; the file says what it will own.
     - id: fairy-senses
       name: '@fairy/senses'
 
