@@ -148,7 +148,9 @@ try {
   } else if (command === 'memory') {
     // Read-only: no lock, no writes, safe while she is running. Pass a backup path in
     // FAIRY_LIFE_PATH to look at an old copy.
-    if (!existsSync(at.lifePath)) throw new Error(`no life at ${at.lifePath}: she has not been born yet`)
+    if (!existsSync(at.lifePath)) {
+      throw new Error(`no life at ${at.lifePath}: she has not been born yet. Run \`pnpm fairy\` first; that first start is her birth.`)
+    }
     const { formatInspection, inspect, readLife } = await import('../packages/self/fairy-isla/dist/index.js')
     const query = process.argv.slice(3).join(' ').trim() || undefined
     console.log(formatInspection(inspect(readLife(at.lifePath), query), query))
