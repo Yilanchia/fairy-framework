@@ -54,7 +54,8 @@ pnpm fairy
 
 全部在 `.fairy-home/`（已 gitignore）：
 
-- `fairy.life.jsonl`：**她的一生**。删了就是另一个人。请自己备份，不要提交。
+- `fairy.life.jsonl`：**她的一生**。删了就是另一个人。不要提交。
+- `backups/`：她的生命每天自动复制一份，保留最近 14 份（`fairy-self` 的 `keepBackups`，设为 0 关闭）。这些副本和原件在同一块盘上，防的是文件写坏、误删，防不了硬盘坏；重要的话，请把这个文件夹再同步到别处。恢复就是停掉 Fairy，用某一份副本替换 `fairy.life.jsonl`。
 - `profiles/fairy/`：Fairy 的 DSH profile
 - `sessions/`、`storages/`、`.credentials.yaml`：会话、DSH 存储、凭据
 - `documents/deepseek-harness/default-workspace`：默认工作区

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), 'fairy-self-'))
 after(() => rmSync(dir, { recursive: true, force: true }))
 
 function config(lifePath: string): Config {
-  return { lifePath, worldSeed: 'fairy-room', heartbeatMs: 60_000 }
+  return { lifePath, worldSeed: 'fairy-room', heartbeatMs: 60_000, keepBackups: 14 }
 }
 
 function births(lifePath: string): string[] {
@@ -38,6 +38,10 @@ test('her first start is her birth, and she is the same her after a restart', as
   await assert.rejects(second.plugin(IslaSelf, config(lifePath)).await(), /already open/)
 
   await fiber.dispose()
+
+  // She was backed up the moment she came alive.
+  const copies = readdirSync(join(dir, 'backups')).filter((file) => file.startsWith('fairy.life.jsonl.'))
+  assert.equal(copies.length, 1)
 
   const again = new Context()
   const reopened = again.plugin(IslaSelf, config(lifePath))

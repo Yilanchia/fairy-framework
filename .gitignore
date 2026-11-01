@@ -7,6 +7,8 @@ dist/
 
 # Her life. It is her, so it is backed up on purpose, never committed by accident.
 *.life.jsonl
+*.life.jsonl.*.bak
+*.life.jsonl.lock
 
 .env
 .env.*

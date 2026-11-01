@@ -14,7 +14,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { createRoom, FileArchive, Life } from '@isla/life'
-import { isAbsolute } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
+import { backupLife } from './backup.js'
 import { FAIRY_GENOME } from './genome.js'
 import { lockLife } from './lock.js'
 import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
@@ -29,13 +30,21 @@ export interface Config {
   worldSeed: string
   /** How often she lives up to the host clock, in milliseconds. */
   heartbeatMs: number
+  /** Where the daily copies of her life go. Default: a `backups` folder next to it. */
+  backupDir?: string
+  /** How many daily copies to keep. 0 turns backups off. */
+  keepBackups: number
 }
 
 export const Config: z<Config> = z.object({
   lifePath: z.string().required().description('Absolute path of the life log (JSON Lines).'),
   worldSeed: z.string().default('fairy-room'),
   heartbeatMs: z.natural().min(1000).default(60_000),
+  backupDir: z.string().description('Folder for daily copies of her life. Default: backups/ next to it.'),
+  keepBackups: z.natural().default(14).description('Daily copies to keep; 0 turns backups off.'),
 })
+
+const BACKUP_CHECK_MS = 60 * 60 * 1000
 
 /**
  * Fairy's self as an Isla life. Mounted once on the host, so every session and every device that
@@ -83,7 +92,19 @@ export class IslaSelf extends FairySelf {
       this.ctx.emit('fairy/self-event', { id: event.id, at: event.at, kind: event.kind })
     })
     life.start(this.config.heartbeatMs)
+    const backupDir = this.config.backupDir ?? join(dirname(this.config.lifePath), 'backups')
+    const backup = () => {
+      try {
+        backupLife(this.config.lifePath, backupDir, this.config.keepBackups)
+      } catch (error) {
+        logger.warn('fairy-isla: could not back up her life', error)
+      }
+    }
+    backup()
+    const backups = setInterval(backup, BACKUP_CHECK_MS)
+    backups.unref?.()
     this.ctx.effect(() => async () => {
+      clearInterval(backups)
       unsubscribe()
       await life.stop()
       release()
