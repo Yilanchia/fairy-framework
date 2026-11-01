@@ -1,0 +1,24 @@
+{
+  "name": "fairy",
+  "private": true,
+  "description": "Fairy: a butler agent built as DeepSeek Harness plugins, with an Isla life kernel as her self.",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "tsc -b && node --test \"packages/*/*/dist/*.test.js\"",
+    "setup:profile": "tsc -b && node scripts/fairy.mjs setup",
+    "dump": "node scripts/fairy.mjs dump",
+    "fairy": "tsc -b && node scripts/fairy.mjs web",
+    "smoke": "tsc -b && node scripts/fairy.mjs smoke"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.5",
+    "@types/node": "24.19.2",
+    "typescript": "5.8.3"
+  }
+}

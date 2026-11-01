@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core/fairy-core" },
+    { "path": "packages/self/fairy-isla" },
+    { "path": "packages/guard/fairy-guard" },
+    { "path": "packages/senses/fairy-senses" },
+    { "path": "packages/hands/fairy-hands" }
+  ]
+}

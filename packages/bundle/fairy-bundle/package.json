@@ -1,0 +1,25 @@
+{
+  "name": "@fairy/bundle",
+  "version": "0.0.1",
+  "description": "Fairy's DeepSeek Harness bundle: one patch layer that mounts her self on the host and her presence in the Fairy agent preset.",
+  "private": true,
+  "type": "module",
+  "files": [
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "dsh": "0.2.1-rc.5"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@fairy/core": "workspace:*",
+    "@fairy/guard": "workspace:*",
+    "@fairy/hands": "workspace:*",
+    "@fairy/isla": "workspace:*",
+    "@fairy/senses": "workspace:*"
+  }
+}

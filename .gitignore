@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Fairy's private DSH home: profile, sessions, logs, credentials. Never commit.
+.fairy-home/
+
+# Her life. It is her, so it is backed up on purpose, never committed by accident.
+*.life.jsonl
+
+.env
+.env.*
+!.env.example

@@ -1,0 +1,40 @@
+{
+  "name": "@fairy/isla",
+  "version": "0.0.1",
+  "description": "Fairy's self, provided by an Isla life kernel. The only Fairy package that imports @isla/*.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "tsc -b && node --test \"dist/*.test.js\""
+  },
+  "engines": {
+    "dsh": "0.2.1-rc.5"
+  },
+  "dependencies": {
+    "@fairy/core": "workspace:*",
+    "@isla/life": "link:../../../../isla/packages/life"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5",
+    "@deepseek-ai/schemastery": "~3.18.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/schemastery": "3.18.5",
+    "@types/node": "24.19.2",
+    "typescript": "5.8.3"
+  }
+}

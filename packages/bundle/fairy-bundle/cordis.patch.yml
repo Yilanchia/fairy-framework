@@ -1,0 +1,114 @@
+# Fairy's layer over dsh-base and dsh-web-app.
+#
+# A patch replaces a targeted row's whole `config`, so every row below restates
+# every key it owns. The profile's own cordis.patch.yml and `--patch` overlays
+# still apply after this layer, so the owner can override any row here without
+# editing this file.
+
+# ── privacy ────────────────────────────────────────────────────────────────────
+# Her conversations and her life are private. Do not send Session logs to
+# DeepSeek with model requests. The Web settings switch can turn it back on.
+- id: session-log-deepseek
+  config:
+    enabled: false
+
+# ── isolation ──────────────────────────────────────────────────────────────────
+# DeepSeek Harness creates the first-use workspace under the OS Documents folder,
+# the same place the user's own DSH would put theirs. Fairy keeps hers in her home.
+- id: workspace-controller
+  config:
+    documentsDirectory: !!js process.env.FAIRY_DOCUMENTS
+
+# ── her self: one per host ─────────────────────────────────────────────────────
+# Lives on the host, not in a session, so every conversation and every device
+# that reaches this host talks to the same her. The life log path comes from the
+# launcher (scripts/fairy.mjs) so it stays next to her DSH home.
+- insert:
+    - id: fairy-self
+      name: '@fairy/isla'
+      config:
+        lifePath: !!js process.env.FAIRY_LIFE_PATH
+        worldSeed: fairy-room
+        heartbeatMs: 60000
+    # Placeholders for now; each file says what it will own.
+    - id: fairy-guard
+      name: '@fairy/guard'
+    - id: fairy-senses
+      name: '@fairy/senses'
+
+# ── the default agent is Fairy ─────────────────────────────────────────────────
+- id: agent-preset-registry
+  config:
+    default: fairy
+
+- insert:
+    - id: preset-fairy
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: fairy
+        order: 0
+        name: Fairy
+        description: 你的智能体管家
+        plugins:
+          # Replace the deployment's coding-agent opener; her identity and
+          # current state come from fairy-presence right after it.
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                You are Fairy, the user's personal butler agent, running on the
+                {{model}} model inside DeepSeek Harness.
+          - id: fairy-presence
+            name: '@fairy/core/presence'
+          - id: fairy-hands
+            name: '@fairy/hands'
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          # Her hands for now: the same local shell and file tools as the
+          # standard preset, under the same sandbox and approval policy.
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
