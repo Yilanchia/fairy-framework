@@ -1,12 +1,26 @@
 import type { FairyFact, FairyIdentity, FairyMemory, FairyStatus } from './index.js'
 
 /** Stable for a life, so it can sit in the cached part of the system prompt. */
-export function renderIdentity(identity: FairyIdentity): string {
+export function renderIdentity(identity: FairyIdentity, chatStyle = ''): string {
   const lines = [`# 你是谁`, `你叫${identity.name}。`]
   if (identity.origin.trim()) lines.push(`来历：${identity.origin.trim()}`)
   if (identity.voice.trim()) lines.push('', '# 你的说话方式', identity.voice.trim())
+  if (chatStyle.trim()) lines.push('', '# 聊天的样子', chatStyle.trim())
   return lines.join('\n')
 }
+
+/**
+ * How she talks in a chat window, as opposed to who she is. Her voice is fixed at birth; this is
+ * the deployment's, and the owner can change it in the profile.
+ */
+export const DEFAULT_CHAT_STYLE = [
+  '你是在和主人发消息，不是在写报告。',
+  '- 平时一到三句话，像微信聊天一样说完就停。主人要细节、要清单、要对比，再展开。',
+  '- 不用标题，不用表格；除非内容本来就是步骤或代码，否则别列清单。',
+  '- 先说结论或结果，过程和依据只在主人问起、或者真的重要时才说。',
+  '- 不复述主人的问题，不在结尾问“还有什么需要”。',
+  '- 做了事就说做成了什么、哪里没做成；不要写成一份汇报。',
+].join('\n')
 
 /** Changes from moment to moment; DeepSeek Harness carries it as dynamic context. */
 export function renderSelfContext(facts: readonly FairyFact[], urgent?: string): string {

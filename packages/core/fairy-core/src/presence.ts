@@ -5,7 +5,7 @@ import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
-import { renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
+import { DEFAULT_CHAT_STYLE, renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
 import type { FairyPerson, FairyUrge } from './index.js'
 
 /**
@@ -32,6 +32,8 @@ export interface Config {
   ownerName: string
   /** Longer replies (code, file dumps) are kept in the session; her life keeps the start. */
   maxRecordedChars: number
+  /** How she talks in a chat window; the deployment's, not her voice. */
+  chatStyle: string
 }
 
 export const Config: z<Config> = z.object({
@@ -40,6 +42,7 @@ export const Config: z<Config> = z.object({
   ownerId: z.string().default('owner'),
   ownerName: z.string().default('主人'),
   maxRecordedChars: z.natural().default(2000),
+  chatStyle: z.string().default(DEFAULT_CHAT_STYLE).description('How she talks in a chat window. Empty to leave it to her voice alone.'),
 })
 
 /** One session's turn in progress. */
@@ -122,7 +125,7 @@ export function apply(ctx: Context, config: Config) {
     order: config.identityOrder,
     // Her voice and origin are her own words; they must not be read as prompt templates.
     interpolate: false,
-    text: () => renderIdentity(ctx.fairySelf.identity()),
+    text: () => renderIdentity(ctx.fairySelf.identity(), config.chatStyle),
   })
 
   ctx.systemPrompt.context({

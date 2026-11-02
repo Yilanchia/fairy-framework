@@ -76,6 +76,7 @@ async function host() {
     ownerId: 'owner',
     ownerName: '主人',
     maxRecordedChars: 40,
+    chatStyle: '像发消息一样说话。',
   })
   await fiber.await()
   return { ctx, fiber, self: ctx.fairySelf as StubSelf }
@@ -122,6 +123,7 @@ test('her identity is in the system prompt and her state in dynamic context', as
   const prompt = renderPrompt(assembly)
   assert.match(prompt, /你叫Fairy。/)
   assert.ok(prompt.includes('说话带{{刺}}'))
+  assert.match(prompt, /# 聊天的样子\n像发消息一样说话。/)
   // State changes every turn, so it stays out of the cached system prompt.
   assert.doesNotMatch(prompt, /你现在心情不错/)
   assert.match(renderContextSnapshot(assembly), /\[state:mood\] 你现在心情不错/)
