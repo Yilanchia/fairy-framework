@@ -14,7 +14,10 @@ const dir = mkdtempSync(join(tmpdir(), 'fairy-guard-'))
 after(() => rmSync(dir, { recursive: true, force: true }))
 
 /** A host with the real tool runtime and question service, a fake shell, and a fake owner. */
-async function host(answer: ((request: AskUserQuestionRequestEvent) => AskUserQuestionAnswer) | 'nobody') {
+async function host(
+  answer: ((request: AskUserQuestionRequestEvent) => AskUserQuestionAnswer) | 'nobody',
+  device?: { selected: string[]; asked: string[] },
+) {
   const auditPath = join(dir, `audit-${Math.random().toString(36).slice(2)}.jsonl`)
   const ctx = new Context()
   await ctx.plugin(SystemPrompt, {}).await()
@@ -25,6 +28,14 @@ async function host(answer: ((request: AskUserQuestionRequestEvent) => AskUserQu
     ctx.on('user-questions/request', async (request) => {
       asked.push(request)
       return answer(request)
+    })
+  }
+  if (device) {
+    ctx.provide('fairyLink', {
+      async confirm(question: { question: string }) {
+        device.asked.push(question.question)
+        return device.selected.length > 0 ? { selected: device.selected } : undefined
+      },
     })
   }
   const ran: string[] = []
@@ -40,7 +51,7 @@ async function host(answer: ((request: AskUserQuestionRequestEvent) => AskUserQu
       },
     }),
   )
-  await ctx.plugin(guard, { auditPath, ask: ['destructive', 'outward', 'money'] }).await()
+  await ctx.plugin(guard, { auditPath, ask: ['destructive', 'outward', 'money'], askTimeoutMs: 5000 }).await()
   const run = (command: string) =>
     ctx.tools.execute({
       callId: `call-${ran.length}-${asked.length}` as ToolExecutionInput['callId'],
@@ -103,6 +114,28 @@ test('with nobody to ask, a risky call is refused rather than let through', asyn
   assert.equal(audit()[0]?.decision, 'unanswered')
 })
 
+test('the question reaches the device in the owner’s hand, and the Web UI is not bothered', async () => {
+  const device = { selected: ['允许这一次'], asked: [] as string[] }
+  const { run, ran, asked, audit } = await host(say('不允许'), device)
+  const result = await run('Remove-Item -Recurse old')
+  assert.equal(result.isError, false)
+  assert.deepEqual(ran, ['Remove-Item -Recurse old'])
+  assert.equal(asked.length, 0, 'a device that answered means the Web UI never sees it')
+  assert.match(device.asked[0]!, /删除或不可撤销：删除文件或文件夹/)
+  assert.equal(audit()[0]?.decision, 'approved')
+})
+
+test('a device that cannot answer hands the question to the Web UI', async () => {
+  const device = { selected: [] as string[], asked: [] as string[] }
+  const { run, ran, asked, audit } = await host(say('不允许'), device)
+  const result = await run('git push origin main')
+  assert.equal(result.isError, true)
+  assert.deepEqual(ran, [])
+  assert.equal(device.asked.length, 1, 'the device was asked first')
+  assert.equal(asked.length, 1, 'and the Web UI answered instead')
+  assert.equal(audit()[0]?.decision, 'refused')
+})
+
 test('the owner can choose which tiers to be asked about', async () => {
   const auditPath = join(dir, 'tiers.jsonl')
   const ctx = new Context()
@@ -125,7 +158,7 @@ test('the owner can choose which tiers to be asked about', async () => {
       },
     }),
   )
-  await ctx.plugin(guard, { auditPath, ask: ['destructive'] }).await()
+  await ctx.plugin(guard, { auditPath, ask: ['destructive'], askTimeoutMs: 5000 }).await()
   const run = (command: string) =>
     ctx.tools.execute({ callId: `c-${command.length}` as ToolExecutionInput['callId'], name: 'pwsh', arguments: { command }, signal: new AbortController().signal })
   assert.equal((await run('git push origin main')).isError, false)

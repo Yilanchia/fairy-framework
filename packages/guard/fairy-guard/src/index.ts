@@ -26,11 +26,18 @@ export interface Config {
   auditPath: string
   /** Tiers that need the owner's yes. The owner chose all three on 2026-11-01. */
   ask: Array<Exclude<Tier, 'routine'>>
+  /**
+   * How long the Web UI has to answer before the call is refused. Without a browser the question
+   * waterfall can wait forever (measured 2026-11-02), and a turn that never ends is worse than a
+   * refusal: the owner can always ask her again.
+   */
+  askTimeoutMs: number
 }
 
 export const Config: z<Config> = z.object({
   auditPath: z.string().required().description('Absolute path of the audit log (JSON Lines).'),
   ask: z.array(z.union(['destructive', 'outward', 'money'])).default(['destructive', 'outward', 'money']),
+  askTimeoutMs: z.natural().min(1000).default(120_000).description('How long to wait for an answer before refusing.'),
 })
 
 const ALLOW = '允许这一次'
@@ -76,6 +83,31 @@ export function approved(answer: AskUserQuestionAnswer): boolean {
   return answer.answers.some((item) => item.selected.includes(ALLOW))
 }
 
+/** The part of `@fairy/link` that asks a device; absent when no channel is mounted. */
+interface Confirmer {
+  confirm(
+    question: {
+      readonly id: string
+      readonly question: string
+      readonly header?: string
+      readonly detail?: string
+      readonly options?: ReadonlyArray<{ readonly label: string; readonly description?: string }>
+    },
+    signal?: AbortSignal,
+  ): Promise<{ selected: string[] } | undefined>
+}
+
+/**
+ * Asks the owner on whatever device is paired, if the channel is mounted and one can answer.
+ * @returns true for yes, false for no, undefined when no device answered at all.
+ */
+async function askDevice(ctx: Context, item: AskUserQuestionItem, signal: AbortSignal): Promise<boolean | undefined> {
+  const link = ctx.get('fairyLink') as Confirmer | undefined
+  if (!link) return undefined
+  const answer = await link.confirm(item, signal)
+  return answer === undefined ? undefined : answer.selected.includes(ALLOW)
+}
+
 export function apply(ctx: Context, config: Config) {
   if (!isAbsolute(config.auditPath)) {
     throw new Error(`fairy-guard: auditPath must be absolute, got ${JSON.stringify(config.auditPath)}`)
@@ -110,12 +142,26 @@ export function apply(ctx: Context, config: Config) {
     }
     let decision: AuditRecord['decision']
     try {
-      const answer = await ctx.userQuestions.ask({
-        questions: [confirmation(exec.name, verdict, subject)],
-        ...(exec.agent ? { agent: exec.agent } : {}),
-        signal: exec.signal,
-      })
-      decision = approved(answer) ? 'approved' : 'refused'
+      // The owner's device first: it is the one they are holding, and a headless host has no
+      // browser to answer the question waterfall — measured on 2026-11-02, where the card waited
+      // forever in a Web UI nobody had open. A device that cannot answer (none paired, none
+      // online, or none answered in time) hands the question on to the Web UI.
+      const onDevice = await askDevice(ctx, confirmation(exec.name, verdict, subject), exec.signal)
+      if (onDevice !== undefined) {
+        decision = onDevice ? 'approved' : 'refused'
+      } else {
+        const answer = await Promise.race([
+          ctx.userQuestions.ask({
+            questions: [confirmation(exec.name, verdict, subject)],
+            ...(exec.agent ? { agent: exec.agent } : {}),
+            signal: exec.signal,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`nobody answered within ${config.askTimeoutMs}ms`)), config.askTimeoutMs).unref?.(),
+          ),
+        ])
+        decision = approved(answer) ? 'approved' : 'refused'
+      }
     } catch (error) {
       if (exec.signal.aborted) {
         write({ ...base, decision: 'unanswered' })

@@ -61,7 +61,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | | `src/semantic.ts` | 硅基流动 embedding 和向量缓存 |
 | | `src/lock.ts` `backup.ts` `inspect.ts` | 单写者锁、每日备份、`pnpm memory` 的只读查看 |
 | `@fairy/guard` | `src/rules.ts` | 纯函数规则：一次调用属于 routine / destructive / outward / money |
-| | `src/index.ts` | `tools/pre-execute` 里问主人（走 `userQuestions`，不走 DSH 审批）、写审计 |
+| | `src/index.ts` | `tools/pre-execute` 里先问设备（`ctx.get('fairyLink')`），再问 Web UI（`userQuestions`，默认 120 秒没人答就拒绝）、写审计 |
 | `@fairy/senses` | `feed.ts` `projects.ts` `weather.ts` | RSS/Atom 解析、`git log` 读项目、wttr.in 天气 |
 | | `index.ts` | 定时读，`stock()` 放上书架，`perceive()` 报天气 |
 | `@fairy/hands` | `src/index.ts` | 占位 |
@@ -150,7 +150,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 ## 现在的状态（2026-11-02）
 
 - 她 2026-11-01 出生，生命文件在 `.fairy-home/`。
-- 测试：Fairy 133 个，Isla 64 个，一年记忆评测通过，冒烟通过。
+- 测试：Fairy 135 个，Isla 64 个，一年记忆评测通过，冒烟通过。
 - 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想、通道（配对 + WebSocket + 终端客户端，只监听本机）。
 - 没有：手机和别的设备上的 App、网页和 App 都关着时把话推到手机上、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
 - 已知小问题：回复里没有标出用了哪些事实，所以对话里的引用不加强记忆，只有 `fairy_recall` 会。

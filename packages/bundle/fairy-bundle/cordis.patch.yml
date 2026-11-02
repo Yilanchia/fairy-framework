@@ -19,6 +19,31 @@
   config:
     documentsDirectory: !!js process.env.FAIRY_DOCUMENTS
 
+# ── one human gate, and it fails closed ────────────────────────────────────────
+# DSH's own approval defaults to `ask`. Nobody is watching a headless host, so an
+# approval nobody can see waits forever and the turn never ends — measured on
+# 2026-11-02, where a Remove-Item hung for five minutes with no error and no audit.
+# `never` means "do not ask": a call that would need DSH's approval is refused, not
+# granted. Her own guard (below) is the gate that reaches the owner, on whatever
+# device is in their hand, and refuses when nobody answers.
+- id: permission
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+      fairy:
+        sandbox: workspace-write
+        approval: never
+        name: Fairy（不问 DSH，问 guard）
+    defaultPreset: fairy
+
 # ── her self: one per host ─────────────────────────────────────────────────────
 # Lives on the host, not in a session, so every conversation and every device
 # that reaches this host talks to the same her. The life log path comes from the

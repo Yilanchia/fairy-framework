@@ -113,6 +113,8 @@ Isla 给每个人记着：哪几天来聊过、通常几点来、她和这个人
 - **令牌只存哈希**：32 字节随机令牌交给设备，`devices.json` 里只留 SHA-256。备份文件被读走也换不成设备；吊销就是删一行，立刻失效。
 - **配对码同时只有一个**：6 位、5 分钟、用一次作废、重发就作废旧的（两个活码等于把猜中的概率翻倍），同一个地址连错 5 次锁 5 分钟。配对只在她监听的本机地址上提供。
 - **设备先接在 DSH 自己的 Web 服务器上**（`ctx.webServer.register` / `registerUpgrade`），不另开端口、不自己管 TLS。跨端开放之前要先做阶段 0：TLS + 私有网络。
-- **确认先问设备，再问 Web UI**：`user-questions/request` 是 Agent 作用域的 waterfall（`ask()` 用 `scopeTarget(agent, agent)` 派发），所以监听器挂在 `fairy-presence` 里，不在宿主级的 `@fairy/link` 里——宿主级监听收不到它，这是实测出来的：第一版把监听放在 link，命令卡在 guard 上、设备一直没收到卡片。有设备就转过去等它答；没有设备、或设备在超时内没答，就 `next()` 交给 Web；都没有，guard 拒绝（决策 11，没变）。设备上的卡片在 Web 回答后不自动收起——协议还没有撤回帧。
-  - 待定位：单元测试覆盖了 confirm 的收发，但端到端（真模型 + 真 guard + CLI 设备）还没跑通，见 plan-app 阶段 1。
+- **确认先问设备，再问 Web UI**：这一步在 `fairy-guard` 里，因为 guard 是宿主级插件、手里就有这次调用的上下文，不需要碰那个 Agent 作用域的 waterfall。顺序是：`ctx.get('fairyLink')?.confirm()` → 设备答了就用它；没有设备 / 设备超时 → `ctx.userQuestions.ask()` 交 Web UI；Web UI 120 秒还没人答 → 拒绝（`askTimeoutMs`）。
+  - 为什么要这么绕：`user-questions/request` 用 `scopeTarget(agent, agent)` 派发，实测（2026-11-02）在没人开浏览器时这个 waterfall 能一直不返回——回合永远不结束，比拒绝更糟。原来把监听放在 `@fairy/link`（宿主级）根本收不到，放在 `fairy-presence`（Agent 作用域）才收得到，但排在客户端转发之后，依旧被挡住。绕开它的唯一稳的办法是让 guard 直接问设备。
+  - 设备上的卡片在 Web 回答后不会自动收起——协议还没有撤回帧。
+- **DSH 自己的审批被让开**：bundle 里加了 `fairy` 权限预设（`sandbox: workspace-write` + `approval: never`）并设为默认。`never` 的意思是"需要审批的动作直接拒绝"，不是放行；这样没人看着时不会卡住，guard 成为唯一的人闸，且它答不上来时一律拒绝。
 - **她的话落进哪个会话**：设备点名了就用那个；否则用它已经接上的；否则用她最近说话的那个（决策 16 的 `lastConversation()`）；一个都没有才新开一个。全程不猜：开不出来就是设备的错误帧。

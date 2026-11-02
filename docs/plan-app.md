@@ -56,7 +56,7 @@
 - ✅ `@fairy/protocol`：版本化的消息类型，两端共用的 `parseClient` / `parseHost`，未知类型、版本不符、超长、空消息都带稳定的拒绝码。
 - ✅ 配对：`POST /fairy/link/pair` 用控制台打印的一次性码换令牌（5 分钟、用一次作废、换新的作废旧的、错 5 次锁 5 分钟）；`DeviceStore` 只存令牌的 SHA-256，可吊销。
 - ✅ `/fairy/link/v1` 的 WebSocket（手写 RFC 6455 文本帧）：`hello` 认证 → `say` 送进她上次的会话（没有就新开一个）→ `reply.done` 带回她的整段回复；`status`、`recall`、`sessions` 可用。
-- ⚠️ 确认转发：`@fairy/link` 的 `confirm()` 和 presence 里 `user-questions/request` 的处理单元测试都过了，但**端到端还没跑通**。实测（2026-11-02）：让 CLI 叫她删一个临时文件，她做完普通调用就停住，设备的确认卡片没出现，回合也没结束——说明确认确实阻塞住了（guard 在等），但没走到设备上。第一件要查的事：`user-questions/request` 用 `scopeTarget(agent, agent)` 派发，presence 的监听是否真的在那个作用域里；其次才是 `ctx.get('fairyLink')` 在作用域内是否可见。
+- ✅ 确认：`fairy-guard` 先问配对设备的 `confirm()`，设备有答案就用它；没有设备、或设备没在超时内回答，才走 `user-questions/request` 的 Web UI（120 秒后仍无人回答就拒绝）。实测（2026-11-02）：终端里叫她删文件，卡片带着完整命令弹在终端，回车选“不允许”→ guard 拒绝、写进审计、她如实回报没删掉。
 - ✅ `apps/fairy-link-cli`：`pair` / `say` / `status` / `recall`，能配对、聊天、回答确认。
 - ⬜ 流式：现在只有 `reply.done`（整段），`reply.delta` 的协议和 `assistantStream` 还没接；App 要打字机效果时再做。
 - ⬜ 设备上的确认卡片在 Web UI 回答后不会自动收起（协议还没有撤回帧）。
