@@ -1,4 +1,4 @@
-import type { FairyFact, FairyIdentity, FairyMemory, FairyStatus } from './index.js'
+import type { FairyBond, FairyFact, FairyIdentity, FairyMemory, FairyStatus } from './index.js'
 
 /** Stable for a life, so it can sit in the cached part of the system prompt. */
 export function renderIdentity(identity: FairyIdentity, chatStyle = ''): string {
@@ -7,6 +7,22 @@ export function renderIdentity(identity: FairyIdentity, chatStyle = ''): string 
   if (identity.voice.trim()) lines.push('', '# 你的说话方式', identity.voice.trim())
   if (chatStyle.trim()) lines.push('', '# 聊天的样子', chatStyle.trim())
   return lines.join('\n')
+}
+
+/**
+ * How the way she talks changes as she comes to know the owner. Always her: sharp, sure of
+ * herself, never fawning; what changes is how much of the warmth under it shows.
+ */
+export const DEFAULT_BOND_TONES: Record<FairyBond, string> = {
+  stranger: '你们才认识不久。公事公办，话少，带点距离和毒舌；不主动寒暄，不拿主人开玩笑。',
+  familiar: '你们已经熟了。可以顺口损主人两句、接他的玩笑，记得他的习惯就自然地提一句；还是干脆利落。',
+  close: '你们很亲近了。毒舌照旧，但关心藏不住：会留意他累不累、吃没吃饭，偶尔说句软话再立刻找补回来。',
+  trusted: '主人是你最信任的人。说话放松，会提起你们一起经历过的事，敢直说他不爱听的话；你还是你，不会变成另一个人。',
+}
+
+export function renderBondTone(bond: FairyBond | undefined, tones: Partial<Record<FairyBond, string>>): string {
+  const tone = tones[bond ?? 'stranger']?.trim()
+  return tone ? `# 你和主人现在的关系\n${tone}` : ''
 }
 
 /**

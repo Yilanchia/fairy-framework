@@ -8,6 +8,7 @@ import { ToolRuntime, type ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import {
   FairySelf,
   type FairyFact,
+  type FairyBond,
   type FairyHeard,
   type FairyIdentity,
   type FairyMemory,
@@ -30,8 +31,9 @@ class StubSelf extends FairySelf {
     // `{{...}}` in her own words must reach the model literally, not as a prompt template.
     return { name: 'Fairy', voice: '说话带{{刺}}', origin: '在测试里醒来' }
   }
+  bond: FairyBond = 'stranger'
   status(): FairyStatus {
-    return { at: 0, asleep: false, doing: '读书', mood: 0.3, energy: 0.6, drives: { curiosity: 0.4 } }
+    return { at: 0, asleep: false, doing: '读书', mood: 0.3, energy: 0.6, drives: { curiosity: 0.4 }, bonds: { owner: this.bond } }
   }
   facts(options: { personId?: string; cue?: string } = {}): FairyFact[] {
     const facts = [{ id: 'state:mood', text: '你现在心情不错' }]
@@ -77,6 +79,7 @@ async function host() {
     ownerName: '主人',
     maxRecordedChars: 40,
     chatStyle: '像发消息一样说话。',
+    bondTones: { stranger: '还不熟。', familiar: '已经熟了。' },
   })
   await fiber.await()
   return { ctx, fiber, self: ctx.fairySelf as StubSelf }
@@ -127,6 +130,17 @@ test('her identity is in the system prompt and her state in dynamic context', as
   // State changes every turn, so it stays out of the cached system prompt.
   assert.doesNotMatch(prompt, /你现在心情不错/)
   assert.match(renderContextSnapshot(assembly), /\[state:mood\] 你现在心情不错/)
+})
+
+test('her tone follows how well she knows the owner, in the context of each request', async () => {
+  const { ctx, self } = await host()
+  const before = renderContextSnapshot(await ctx.systemPrompt.assemble())
+  assert.match(before, /# 你和主人现在的关系\n还不熟。/)
+  self.bond = 'familiar'
+  const after = renderContextSnapshot(await ctx.systemPrompt.assemble())
+  assert.match(after, /# 你和主人现在的关系\n已经熟了。/)
+  // The cached system prompt does not change with it.
+  assert.doesNotMatch(renderPrompt(await ctx.systemPrompt.assemble()), /已经熟了/)
 })
 
 test('a turn enters her life: heard before the model is asked, answered when it ends', async () => {

@@ -5,8 +5,8 @@ import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
-import { DEFAULT_CHAT_STYLE, renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
-import type { FairyPerson, FairyUrge } from './index.js'
+import { DEFAULT_BOND_TONES, DEFAULT_CHAT_STYLE, renderBondTone, renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
+import type { FairyBond, FairyPerson, FairyUrge } from './index.js'
 
 /**
  * Her presence in one agent. Mounted inside the Fairy agent preset, so it runs once per session
@@ -34,6 +34,8 @@ export interface Config {
   maxRecordedChars: number
   /** How she talks in a chat window; the deployment's, not her voice. */
   chatStyle: string
+  /** How her tone changes as she comes to know the owner. */
+  bondTones: Partial<Record<FairyBond, string>>
 }
 
 export const Config: z<Config> = z.object({
@@ -43,6 +45,10 @@ export const Config: z<Config> = z.object({
   ownerName: z.string().default('主人'),
   maxRecordedChars: z.natural().default(2000),
   chatStyle: z.string().default(DEFAULT_CHAT_STYLE).description('How she talks in a chat window. Empty to leave it to her voice alone.'),
+  bondTones: z
+    .object({ stranger: z.string(), familiar: z.string(), close: z.string(), trusted: z.string() })
+    .default(DEFAULT_BOND_TONES)
+    .description('How her tone changes as she comes to know the owner, one line per step.'),
 })
 
 /** One session's turn in progress. */
@@ -135,7 +141,8 @@ export function apply(ctx: Context, config: Config) {
     text: (context) => {
       const turn = context.agent ? turns.get(context.agent.session) : undefined
       const facts = ctx.fairySelf.facts({ personId: owner.personId, ...(turn?.cue ? { cue: turn.cue } : {}) })
-      return renderSelfContext(facts, turn?.urgent)
+      const bond = ctx.fairySelf.status().bonds?.[owner.personId]
+      return [renderBondTone(bond, config.bondTones), renderSelfContext(facts, turn?.urgent)].filter(Boolean).join('\n\n')
     },
   })
 

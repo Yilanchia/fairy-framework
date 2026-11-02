@@ -18,6 +18,8 @@ export function toStatus(state: LifeState): FairyStatus {
     mood: state.mood.valence,
     energy: state.energy,
     drives: { ...state.drives },
+    // A life opened from before bonds existed has none yet: they are strangers until it says so.
+    bonds: Object.fromEntries(Object.values(state.people).map((person) => [person.personId, person.bond ?? 'stranger'])),
   }
 }
 

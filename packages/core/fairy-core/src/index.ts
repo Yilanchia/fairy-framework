@@ -53,6 +53,8 @@ export interface FairyStatus {
   readonly energy: number
   /** Her own needs, each 0 to 1, keyed by name. */
   readonly drives: Readonly<Record<string, number>>
+  /** How well she knows each person she has talked to, keyed by person id. */
+  readonly bonds?: Readonly<Record<string, FairyBond>>
 }
 
 export interface FairySelfEvent {
@@ -60,6 +62,9 @@ export interface FairySelfEvent {
   readonly at: number
   readonly kind: string
 }
+
+/** 初识 → 熟悉 → 亲近 → 信赖; only ever deepens. */
+export type FairyBond = 'stranger' | 'familiar' | 'close' | 'trusted'
 
 /** Someone she talks with. */
 export interface FairyPerson {
