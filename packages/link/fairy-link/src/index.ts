@@ -384,6 +384,12 @@ export class FairyLink extends Service {
         const sender = this.sender()
         if (!sender) return send(conn, { type: 'error', id: message.id, code: 'bad-shape', message: 'this host has no conversation controller' })
         const signal = new AbortController().signal
+        const words = message.text.trim()
+        // A text file is handed to her as words with a heading, so she reads it as something the
+        // owner gave her rather than as something they said.
+        const asText = message.document
+          ? `${words ? `${words}\n\n` : ''}（主人发来一个文件：${message.document.name}）\n\n${message.document.text}`
+          : words
         const content = [
           ...(message.images ?? []).map((image) => ({
             type: 'image' as const,
@@ -391,7 +397,7 @@ export class FairyLink extends Service {
             data: image.data,
             ...(image.name ? { name: image.name } : {}),
           })),
-          ...(message.text.trim() ? [{ type: 'text' as const, text: message.text }] : []),
+          ...(asText ? [{ type: 'text' as const, text: asText }] : []),
         ]
         const tell = (sessionId: SessionId) =>
           sender.prompt({ requestId: randomId('q'), sessionId, mode: 'queue', content }, signal)

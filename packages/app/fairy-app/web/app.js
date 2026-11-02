@@ -223,12 +223,31 @@ async function attach() {
   }
 }
 
+/**
+ * A text file — markdown, plain text — is read in the page and sent as a document. Binary
+ * formats need the host's attachment pipeline and are not part of this wire yet.
+ */
+async function sendDocument() {
+  const file = $('doc').files?.[0]
+  $('doc').value = ''
+  if (!file) return
+  const text = await file.text()
+  if (!text.trim()) return line('note', '这个文件是空的。')
+  if (text.length > 40000) return line('note', `文件太长（${text.length} 字），现在的上限是 4 万字。`)
+  const caption = $('text').value.trim()
+  if (!send({ type: 'say', id: `say-${crypto.randomUUID()}`, text: caption, document: { name: file.name, text } })) return
+  line('me', `${caption ? `${caption}\n\n` : ''}📄 ${file.name}（${text.length} 字）`)
+  $('text').value = ''
+}
+
 $('pairButton').addEventListener('click', pair)
 $('code').addEventListener('keydown', (event) => event.key === 'Enter' && pair())
 $('send').addEventListener('click', say)
 $('text').addEventListener('keydown', (event) => event.key === 'Enter' && say())
 $('attach').addEventListener('click', () => $('file').click())
 $('file').addEventListener('change', attach)
+$('sendFile').addEventListener('click', () => $('doc').click())
+$('doc').addEventListener('change', sendDocument)
 $('name').value = state.name
 
 if (state.token) connect()

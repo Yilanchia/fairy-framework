@@ -196,6 +196,16 @@ test('a turn enters her life: heard before the model is asked, answered when it 
   assert.ok(spoken!.text.length <= 41, 'a long reply is kept to its start')
 })
 
+test('a long paste reaches the model whole but her life keeps the start of it', async () => {
+  const { ctx, self } = await host()
+  const target = agent()
+  await preStep(ctx, target, [message('x'.repeat(400))])
+  assert.equal(self.heard.length, 1)
+  const kept = self.heard[0]!.text
+  assert.ok(kept.length <= 41, `her life keeps at most maxRecordedChars: got ${kept.length}`)
+  assert.ok(kept.endsWith('…'))
+})
+
 test('a picture she was shown is remembered as a picture, without its bytes', async () => {
   const { ctx, self } = await host()
   const target = agent()

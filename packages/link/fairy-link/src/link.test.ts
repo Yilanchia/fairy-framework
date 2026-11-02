@@ -247,6 +247,19 @@ test('a picture on its own is a message too', async () => {
   peer.close()
 })
 
+test('a text file reaches her as a file, with what the owner said about it', async () => {
+  const { ctx, base, sender } = await host()
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer } = await device(base, token)
+  peer.send(encode({ type: 'say', id: 's1', text: '帮我看看这个', document: { name: 'notes.md', text: '# 清单\n- 备份' } }))
+  await until(() => sender.prompted.length === 1, 'the prompt')
+  const text = sender.prompted[0]?.text ?? ''
+  assert.match(text, /帮我看看这个/)
+  assert.match(text, /主人发来一个文件：notes\.md/)
+  assert.match(text, /# 清单/)
+  peer.close()
+})
+
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
   const { ctx, base } = await host()
   const code = ctx.fairyLink.pairingCode()!.code

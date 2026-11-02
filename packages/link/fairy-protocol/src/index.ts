@@ -19,6 +19,12 @@ export const MAX_ID = 128
 /** The longest base64 picture one frame may carry (about 700 KiB of pixels). */
 export const MAX_IMAGE_CHARS = 960_000
 
+/** The longest text file one message may carry; a bigger one is refused, not cut. */
+export const MAX_DOCUMENT_CHARS = 40_000
+
+/** The longest file name a device may send. */
+export const MAX_DOCUMENT_NAME = 120
+
 /** What a paired device is: a client the owner types in, a machine node, or the test client. */
 export type DeviceKind = 'app' | 'node' | 'cli'
 
@@ -48,6 +54,14 @@ export interface Say {
   readonly sessionId?: string
   /** Pictures, already resized by the device: base64, no data: prefix. */
   readonly images?: readonly SayImage[]
+  /** A small text file — markdown, plain text — read by the device and handed over whole. */
+  readonly document?: SayDocument
+}
+
+/** A text file the owner picked: its name, and its text. Binary formats do not fit here. */
+export interface SayDocument {
+  readonly name: string
+  readonly text: string
 }
 
 /** One picture from the owner, small enough to travel in one frame. */
@@ -296,8 +310,9 @@ export function parseClient(raw: string): Parsed<ClientMessage> {
     }
     case 'say': {
       const hasImages = Array.isArray(value.images) && value.images.length > 0
+      const hasDocument = record(value.document)
       if (typeof value.text !== 'string') return refuse('bad-shape', 'say.text is text')
-      if (!value.text.trim() && !hasImages) return refuse('empty', 'say needs some words, or a picture')
+      if (!value.text.trim() && !hasImages && !hasDocument) return refuse('empty', 'say needs some words, a picture, or a file')
       if (value.text.length > MAX_TEXT) return refuse('too-long', `one message may hold at most ${MAX_TEXT} characters`)
       if (value.sessionId !== undefined && !isId(value.sessionId)) return refuse('bad-shape', 'sessionId is malformed')
       if (value.images !== undefined) {
@@ -309,6 +324,18 @@ export function parseClient(raw: string): Parsed<ClientMessage> {
             return refuse('bad-shape', 'each picture needs a png/jpeg/webp mediaType and base64 data')
           }
           if (image.name !== undefined && typeof image.name !== 'string') return refuse('bad-shape', 'a picture name must be text')
+        }
+      }
+      if (value.document !== undefined) {
+        if (!record(value.document)) return refuse('bad-shape', 'document needs a name and text')
+        const name = value.document.name
+        const text = value.document.text
+        if (typeof name !== 'string' || !name.trim() || name.length > MAX_DOCUMENT_NAME) {
+          return refuse('bad-shape', `a file needs a name of at most ${MAX_DOCUMENT_NAME} characters`)
+        }
+        if (typeof text !== 'string' || !text.trim()) return refuse('empty', 'the file is empty')
+        if (text.length > MAX_DOCUMENT_CHARS) {
+          return refuse('too-long', `one file may hold at most ${MAX_DOCUMENT_CHARS} characters`)
         }
       }
       return { ok: true, message: value as unknown as Say }

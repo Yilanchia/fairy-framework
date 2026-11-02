@@ -48,6 +48,15 @@ test('a picture may ride along, or make a message on its own, but never unbounde
   assert.equal(client({ type: 'say', id: 's7', text: 'x', images: many }).ok, false, 'at most four pictures')
 })
 
+test('a text file may ride along, and is bounded like everything else', () => {
+  assert.equal(client({ type: 'say', id: 'd1', text: '', document: { name: 'a.md', text: '# hi' } }).ok, true)
+  assert.equal(client({ type: 'say', id: 'd2', text: '看看这个', document: { name: 'a.md', text: '# hi' } }).ok, true)
+  assert.equal(client({ type: 'say', id: 'd3', text: 'x', document: { name: '', text: 'x' } }).ok, false)
+  assert.equal(client({ type: 'say', id: 'd4', text: 'x', document: { name: 'a.md', text: '   ' } }).ok, false)
+  assert.equal(client({ type: 'say', id: 'd5', text: 'x', document: { name: 'a.md', text: 'x'.repeat(40_001) } }).ok, false)
+  assert.equal(client({ type: 'say', id: 'd6', text: 'x', document: { name: 'x'.repeat(121), text: 'x' } }).ok, false)
+})
+
 test('history asks for words already said, and the answer is checked like everything else', () => {
   assert.equal(client({ type: 'history', id: 'h1' }).ok, true)
   assert.equal(client({ type: 'history', id: 'h2', limit: 20 }).ok, true)

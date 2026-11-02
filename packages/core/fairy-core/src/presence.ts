@@ -184,7 +184,9 @@ export function apply(ctx: Context, config: Config) {
     const text = humanText(payload.messages)
     if (!text) return decision
     try {
-      const heard = await ctx.fairySelf.hear(owner, text, `dsh-session:${payload.agent.session.id}`)
+      // Her life keeps the gist of what was said, not a pasted file: the whole message reaches the
+      // model through the harness, and the session keeps it. Her log stays one line per thing said.
+      const heard = await ctx.fairySelf.hear(owner, clip(text, config.maxRecordedChars), `dsh-session:${payload.agent.session.id}`)
       turn.heard = heard.id
       delete turn.urge
       turn.cue = text
