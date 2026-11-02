@@ -63,6 +63,8 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | `@fairy/senses` | `feed.ts` `projects.ts` `weather.ts` | RSS/Atom 解析、`git log` 读项目、wttr.in 天气 |
 | | `index.ts` | 定时读，`stock()` 放上书架，`perceive()` 报天气 |
 | `@fairy/hands` | `src/index.ts` | 占位 |
+| `@fairy/protocol` | `src/index.ts` | 她和设备之间的线：版本化的消息类型 + 两端共用的校验（`parseClient` / `parseHost`）。纯 TypeScript，不 import DSH |
+| `@fairy/link` | `src/devices.ts` `src/pairing.ts` | 已配对设备（令牌只存哈希）、一次性配对码。WebSocket 通道、接会话、转发确认在 `plan-app.md` 阶段 1 里 |
 | `@fairy/bundle` | `cordis.patch.yml` | 把以上装进 DSH |
 | `scripts/fairy.mjs` | | 启动脚本：唯一设置 `DSH_HOME` 的地方；读 `.env`；`setup` / `web` / `smoke` / `dump` / `memory` |
 

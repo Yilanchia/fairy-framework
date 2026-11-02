@@ -6,6 +6,7 @@
     { "path": "packages/guard/fairy-guard" },
     { "path": "packages/senses/fairy-senses" },
     { "path": "packages/hands/fairy-hands" },
-    { "path": "packages/link/fairy-protocol" }
+    { "path": "packages/link/fairy-protocol" },
+    { "path": "packages/link/fairy-link" }
   ]
 }

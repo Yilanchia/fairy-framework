@@ -51,6 +51,14 @@
 
 ## 阶段 1：`@fairy/link`，通道协议
 
+进行中（2026-11-02）：协议和配对的地基已经有了，WebSocket 通道还没接。
+
+- ✅ `@fairy/protocol`：版本化的消息类型，两端共用的 `parseClient` / `parseHost`，未知类型、版本不符、超长、空消息都带稳定的拒绝码。
+- ✅ 配对的地基：`PairingCodes`（一次性、5 分钟、换新的就作废旧的）、`DeviceStore`（令牌只存 SHA-256，可吊销，重启后还在）。
+- ⬜ `POST /fairy/link/pair` 用配对码换令牌。
+- ⬜ `/fairy/link/v1` 的 WebSocket：`hello` 认证、`say` 接进会话、`reply.done`、`status`、`recall`、`sessions`。
+- ⬜ 把 `user-questions/request` 上的确认转成 `confirm` 发给在线设备。
+
 ### 接到 DSH 上
 
 - 路由：`ctx.webServer.register({ kind: 'exact', path: '/fairy/link/pair', handler })` 和 `ctx.webServer.registerUpgrade({ path: '/fairy/link/v1', handler })`（`@deepseek-ai/dsh-host-webserver`）。和 DSH Web 同端口、同 TLS。
