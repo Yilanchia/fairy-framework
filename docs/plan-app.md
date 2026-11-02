@@ -37,6 +37,19 @@
 
 ## 阶段 0：上服务器
 
+基本完成（2026-11-02）：她已经在 `38.244.14.207` 上以独立账号 + systemd 常驻，博客没有受影响。
+
+- ✅ 服务器：Ubuntu 24.04，2C/2G/30G；`fairy` 账号（非 root），Node 24 装在 `/opt/node24`，没用系统的包管理器。
+- ✅ 两个仓库都拉上去了，`link:` 依赖在服务器上是 `/home/fairy/isla`。
+- ✅ 进程守护：`fairy.service`，`Restart=always`、`MemoryMax=768M`、开机自启。
+- ✅ 迁移她：停掉 PC 上的她 → 拷 `fairy.life.jsonl`（250 事件）、`backups/`、`sessions/`、`devices.json` → 服务器上 `doctor` 全绿 → 她在服务器上真的回了一句话。PC 上那份原样留着、不启动。
+- ⬜ 对外访问：Tailscale 已装、`tailscaled` 在跑，**等主人点授权链接**；之后配 `tailscale serve` 把 3090 反代进私有网络。
+- ⬜ 备份外同步：`backups/` 还只在服务器那块盘上，要同步到另一处（对象存储或主人的 PC）。
+- ⬜ 服务器上 `.env` 已是 600；SSH 还是 root + 密码，需要换密钥并关掉密码登录（要主人在场）。
+- ⬜ 服务器 `reboot-required` 挂着（471 天没重启），挑时间重启一次。
+
+## 阶段 0（原计划，保留）
+
 先让她在服务器上稳稳地活着，再谈多端。
 
 - 服务器上装 Node 24、pnpm 11，拉两个仓库，`D:\isla` 换成服务器上的路径（`packages/self/fairy-isla/package.json` 里的 `link:` 要改，或者改成 workspace 依赖）。

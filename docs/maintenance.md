@@ -4,6 +4,53 @@
 
 先记住三条：**她的生命是 `fairy.life.jsonl`，只追加、只备份、不编辑**；**任何"修"之前先复制**；**一个宿主只有一个写入者**。
 
+## 她现在住在哪（2026-11-02 起）
+
+她从这台 Windows 搬到了一台 Ubuntu 服务器上，**只留一个她**：本机那份已经停掉、文件原样留着（`.fairy-home/`），不要再启动。
+
+| 项 | 值 |
+|---|---|
+| 服务器 | `38.244.14.207`，Ubuntu 24.04，2 核 / 2G / 30G |
+| 她的账号 | `fairy`（不是 root，没有 sudo），家目录 `/home/fairy` |
+| 代码 | `/home/fairy/fairy-framework`，生命内核 `/home/fairy/isla` |
+| Node | `/opt/node24`（v24.22.2），`/usr/local/bin` 里是软链；**没动系统的包管理器** |
+| 她的家 | `/home/fairy/fairy-framework/.fairy-home/`，和本机同一个结构 |
+| 服务 | `fairy.service`（systemd，`Restart=always`，`MemoryMax=768M`，开机自启） |
+| 端口 | `127.0.0.1:3090`，**只听本机**；对外靠 Tailscale |
+| 同一台机器上的 | 宝塔面板、nginx（`lycoreco.cn` 的博客）、PHP 8.3、MySQL、astrbot |
+
+和博客的关系：她**没有**改 nginx 配置、没有占 80/443、没有动 PHP/MySQL/宝塔。验收方式是改之前和改之后对 `vhost` 配置取 md5、对博客取 HTTP 状态——两次一致（`f55ddb04…`，`http=301`）。
+
+### 日常命令（都在服务器的 `fairy` 账号下）
+
+```bash
+cd /home/fairy/fairy-framework
+node scripts/fairy.mjs doctor        # 她还好吗
+node scripts/fairy.mjs memory 花生    # 她记得什么（只读）
+journalctl -u fairy -n 50            # 她的日志；配对码在这里
+systemctl status fairy               # 她的进程
+```
+
+配对码每次重启都变，从 `journalctl -u fairy` 里那一行 `fairy-link: pairing code` 拿。
+
+### 更新服务器上的代码
+
+本机改完、测试通过、提交之后：
+
+1. 本机打包（不要带 `node_modules`、`dist`、`.fairy-home`）：
+   ```powershell
+   tar -czf "$env:TEMP\fairy-deploy\fairy-framework.tgz" -C D:\ --exclude='node_modules' --exclude='**/node_modules' --exclude='.fairy-home' --exclude='**/.fairy-home' --exclude='dist' --exclude='**/dist' --exclude='*.tsbuildinfo' fairy-framework
+   ```
+2. 传到 `/home/fairy/`，解开、`chown -R fairy:fairy`。
+3. `su - fairy -c 'cd /home/fairy/fairy-framework && npx tsc -b'`。
+4. `systemctl restart fairy`，然后 `doctor`。
+
+`@isla/life` 改了的话，还要在 `/home/fairy/isla/packages/life` 里 `npx tsc -p tsconfig.json`。
+
+### 本机这份副本
+
+`.fairy-home/` 里还是她 2026-11-02 那 250 个事件，**保留、不启动**。真要回滚：停掉服务器上的 `fairy.service`，把她最新的 `fairy.life.jsonl` 拿回来，启动本机那份。两边同时启动会被单写者锁挡住——这是设计，不是故障。
+
 ## 每周看一眼
 
 ```powershell
