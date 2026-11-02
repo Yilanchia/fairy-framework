@@ -97,7 +97,7 @@ Isla 已经有一样它们都没有的东西：一份只追加、带因果链的
 2. ✅ 检索：线索、激活度、清晰度，自然想起和 `fairy_recall`，一年模拟评测。
 3. ✅ 睡眠整理：每晚按上午、下午、晚上、夜里写 `episode`，周日写这一周的 `chapter`，月底写这个月的。
 4. ✅ 人和未了的事：`noted`，Fairy 用 `fairy_note` 记。未了的事就是 `pending` 的记录，常驻在她的事实里，`done` 关掉。到点提醒仍然交给 DSH 的定时任务，不另做一套。
-5. 可选：embedding 线索。先不做，见下面的数字。
+5. ✅ embedding 线索（2026-11-02）：配了 `SILICONFLOW_API_KEY` 时，`fairy-isla` 用硅基流动的 `BAAI/bge-m3` 给有意义的记忆（说过的话、记下的事、日记、认识、片段、读过的东西）算向量，存在 `memory-vectors.jsonl`；每句话听到时算一次，意思相近的记忆作为一种线索交给 Isla，权重比字面相同略低。它是缓存，不是她的生命，删了会重建；Isla 自己仍然不调用任何模型。没 key 或服务出错时退回只靠字面。真实效果还没测：要等有 key 再跑一遍换说法的评测。
 
 ## 实测（Isla `evals/src/memory.eval.test.ts`）
 
