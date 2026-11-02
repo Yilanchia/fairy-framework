@@ -167,6 +167,19 @@ try {
     const { formatInspection, inspect, readLife } = await import('../packages/self/fairy-isla/dist/index.js')
     const query = process.argv.slice(3).join(' ').trim() || undefined
     console.log(formatInspection(inspect(readLife(at.lifePath), query), query))
+  } else if (command === 'pair') {
+    // The code rotates in the running host; read the latest instead of making the owner reboot.
+    const file = join(at.home, 'pairing-code')
+    if (!existsSync(file)) throw new Error('no pairing code: she is not running. Start her first (`pnpm fairy`), or check `journalctl -u fairy`.')
+    const [code, expires] = readFileSync(file, 'utf8').trim().split(/\s+/u)
+    const minutes = Math.round((Number(expires) - Date.now()) / 60_000)
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      throw new Error('that code just expired; the next one arrives within a few minutes (or restart her)')
+    }
+    console.log(`pairing code ${code}, valid for another ${minutes} minute(s)`)
+    // Prefer what the deployment says its address is; a plain host falls back to loopback.
+    const publicUrl = process.env.FAIRY_PUBLIC_URL ?? ownEnv().FAIRY_PUBLIC_URL ?? 'http://127.0.0.1:3090'
+    console.log(`open ${publicUrl.replace(/\/$/u, '')}/fairy/app/ and type it in`)
   } else if (command === 'doctor') {
     // Read-only: no lock, no writes, safe while she is running. Answers "is she okay" in one look.
     const { formatHealth, healthReport, readLife } = await import('../packages/self/fairy-isla/dist/index.js')

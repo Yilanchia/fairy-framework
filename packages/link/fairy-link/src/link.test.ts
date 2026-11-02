@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
@@ -107,6 +107,7 @@ async function host(options: { conversation?: string | undefined } = {}) {
     ownerId: 'owner',
     ownerName: '主人',
     confirmTimeoutMs: 2000,
+    pairCodeMinutes: 5,
   })
   await fiber.await()
   fibers.push(fiber)
@@ -143,6 +144,23 @@ async function device(base: string, token: string, accepts: string[] = ['push', 
   await until(() => inbox.some((message) => message.type === 'welcome'), 'the welcome')
   return { peer, inbox }
 }
+
+test('the live code is left where the owner can read it, and a new one replaces it', async () => {
+  const { ctx, base } = await host()
+  const file = join(dir, 'pairing-code')
+  const [code, expires] = readFileSync(file, 'utf8').trim().split(/\s+/u)
+  assert.equal(code, ctx.fairyLink.pairingCode()!.code)
+  assert.ok(Number(expires) > Date.now(), 'the file says when it dies')
+
+  const rotated = ctx.fairyLink.rotate()
+  assert.notEqual(rotated.code, code)
+  assert.equal(readFileSync(file, 'utf8').trim().split(/\s+/u)[0], rotated.code)
+
+  // Pairing spends the code and immediately hands out the next one.
+  const { token } = await pair(base, rotated.code)
+  assert.ok(token)
+  assert.notEqual(ctx.fairyLink.pairingCode()?.code, rotated.code)
+})
 
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
   const { ctx, base } = await host()

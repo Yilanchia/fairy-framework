@@ -49,12 +49,13 @@ ls /proc/$PID/root/www        # 不存在
 ```bash
 cd /home/fairy/fairy-framework
 node scripts/fairy.mjs doctor        # 她还好吗
+node scripts/fairy.mjs pair          # 当前的配对码 + 她的页面地址
 node scripts/fairy.mjs memory 花生    # 她记得什么（只读）
-journalctl -u fairy -n 50            # 她的日志；配对码在这里
+journalctl -u fairy -n 50            # 她的日志
 systemctl status fairy               # 她的进程
 ```
 
-配对码每次重启都变，从 `journalctl -u fairy` 里那一行 `fairy-link: pairing code` 拿。
+配对码不是只在启动时出现一次：它每 5 分钟换一个，最新的写在 `.fairy-home/pairing-code`（0600，只有 `fairy` 能读），`node scripts/fairy.mjs pair` 打的就是它。配对成功后会立刻换成新的，所以给下一台设备配对不用等、也不用重启她。
 
 ### 更新服务器上的代码
 

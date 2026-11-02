@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto'
+import { writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { dirname, join } from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -49,6 +51,8 @@ export interface Config {
   ownerName: string
   /** How long a confirmation waits on a device before the Web UI is asked instead. */
   confirmTimeoutMs: number
+  /** How long a pairing code lives before a fresh one replaces it. */
+  pairCodeMinutes: number
 }
 
 export const Config: z<Config> = z.object({
@@ -58,6 +62,7 @@ export const Config: z<Config> = z.object({
   ownerId: z.string().default('owner'),
   ownerName: z.string().default('主人'),
   confirmTimeoutMs: z.natural().min(1000).default(300_000),
+  pairCodeMinutes: z.natural().min(1).default(5),
 })
 
 /** One connected device. Authenticated only after `hello`. */
@@ -139,13 +144,12 @@ export class FairyLink extends Service {
 
   async [Service.init](): Promise<void> {
     this.store = DeviceStore.open(this.config.devicesPath)
-    const code = this.codes.mint()
-    // On the host's own console, not through the logger: this is for the person at the keyboard,
-    // and the host's default log level would swallow it.
-    console.log(
-      `fairy-link: pairing code ${code.code}, valid until ${new Date(code.expiresAt).toISOString()} — POST it with a device name to /fairy/link/pair`,
-    )
-    this.ctx.logger.info(`fairy-link: pairing code printed (${code.code.slice(0, 2)}……)`)
+    this.rotate()
+    // A code that only appears at boot is useless on a host nobody reboots: it expires before the
+    // owner gets to the console. It rotates instead, and the latest is left beside the devices.
+    const rotate = setInterval(() => this.rotate(), this.config.pairCodeMinutes * 60_000)
+    rotate.unref?.()
+    this.ctx.effect(() => () => clearInterval(rotate), 'fairy-link.code')
 
     this.ctx.effect(
       () =>
@@ -202,6 +206,28 @@ export class FairyLink extends Service {
   /** The live pairing code, for the owner to read on the console or the Web settings page. */
   pairingCode(): { code: string; expiresAt: number } | undefined {
     return this.codes.peek()
+  }
+
+  /**
+   * Mints a fresh code, prints it on the console, and leaves it in a file only her account can
+   * read — because the person who wants to pair a phone is not sitting at the server's console.
+   */
+  rotate(): { code: string; expiresAt: number } {
+    const code = this.codes.mint()
+    console.log(
+      `fairy-link: pairing code ${code.code}, valid until ${new Date(code.expiresAt).toISOString()} — POST it with a device name to /fairy/link/pair`,
+    )
+    try {
+      writeFileSync(this.codePath(), `${code.code} ${code.expiresAt}\n`, { encoding: 'utf8', mode: 0o600 })
+    } catch (error) {
+      this.ctx.logger.warn('fairy-link: could not write the pairing code beside her devices', error)
+    }
+    return code
+  }
+
+  /** Where the launcher and the owner read the current code. */
+  private codePath(): string {
+    return join(dirname(this.config.devicesPath), 'pairing-code')
   }
 
   /** Every paired device, without its token. */
@@ -265,6 +291,8 @@ export class FairyLink extends Service {
     this.failures.delete(address)
     const { device, token } = this.store.add(deviceName, kind)
     this.ctx.logger.info(`fairy-link: paired "${device.name}" (${device.kind})`)
+    // The code is spent; hand out the next one straight away so the next device does not wait.
+    this.rotate()
     return json(res, 200, { protocol: PROTOCOL_VERSION, device: publicDevice(device), token })
   }
 
