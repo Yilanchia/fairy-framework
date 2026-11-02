@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), 'fairy-self-'))
 after(() => rmSync(dir, { recursive: true, force: true }))
 
 function config(lifePath: string): Config {
-  return { lifePath, worldSeed: 'fairy-room', heartbeatMs: 60_000, keepBackups: 14, reachOut: true, ownerId: 'owner' }
+  return { lifePath, worldSeed: 'fairy-room', heartbeatMs: 60_000, keepBackups: 14, reachOut: true, ownerId: 'owner', semantic: { enabled: true, model: 'BAAI/bge-m3' } }
 }
 
 function births(lifePath: string): string[] {

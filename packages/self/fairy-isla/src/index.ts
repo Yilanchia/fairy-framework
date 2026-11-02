@@ -18,6 +18,7 @@ import z from '@deepseek-ai/schemastery'
 import { ACTIVITIES, createRoom, FileArchive, Life, shelfActivity } from '@isla/life'
 import { dirname, isAbsolute, join } from 'node:path'
 import { backupLife } from './backup.js'
+import { SemanticIndex, SiliconFlowEmbedder } from './semantic.js'
 import { FAIRY_GENOME } from './genome.js'
 import { lockLife } from './lock.js'
 import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
@@ -25,6 +26,7 @@ import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 export { FAIRY_GENOME, FAIRY_GENOME_INPUT } from './genome.js'
 export { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 export { formatInspection, inspect, readLife, type Inspection } from './inspect.js'
+export { meaningOf, SemanticIndex, SiliconFlowEmbedder, type Embedder } from './semantic.js'
 
 export interface Config {
   /** Absolute path of her life log. The file is her: back it up, never commit it. */
@@ -40,6 +42,8 @@ export interface Config {
   /** Whether she may reach out to the owner on her own. The owner said yes on 2026-11-01. */
   reachOut: boolean
   ownerId: string
+  /** Recall by meaning, through SiliconFlow embeddings. Off without SILICONFLOW_API_KEY. */
+  semantic: { enabled: boolean; model: string; cachePath?: string }
 }
 
 export const Config: z<Config> = z.object({
@@ -50,6 +54,10 @@ export const Config: z<Config> = z.object({
   keepBackups: z.natural().default(14).description('Daily copies to keep; 0 turns backups off.'),
   reachOut: z.boolean().default(true).description('Let her message the owner of her own accord.'),
   ownerId: z.string().default('owner'),
+  semantic: z
+    .object({ enabled: z.boolean().default(true), model: z.string().default('BAAI/bge-m3'), cachePath: z.string() })
+    .default({ enabled: true, model: 'BAAI/bge-m3' })
+    .description('Recall by meaning through SiliconFlow; needs SILICONFLOW_API_KEY. Without it, by words only.'),
 })
 
 /**
@@ -84,6 +92,9 @@ export class IslaSelf extends FairySelf {
   static Config = Config
 
   private life: Life | undefined
+  private semantic: SemanticIndex | undefined
+  /** What was last said to her, and what is close to it in meaning; facts() is synchronous. */
+  private lastCue: { text: string; similar: Map<string, number> } | undefined
 
   constructor(
     ctx: Context,
@@ -118,6 +129,7 @@ export class IslaSelf extends FairySelf {
     }
     this.life = life
     const unsubscribe = life.subscribe((event) => {
+      this.semantic?.add([event])
       this.ctx.emit('fairy/self-event', { id: event.id, at: event.at, kind: event.kind })
       if (event.kind === 'urged') {
         const person = life.state.people[event.payload.personId]
@@ -132,6 +144,19 @@ export class IslaSelf extends FairySelf {
       }
     })
     life.start(this.config.heartbeatMs)
+    const key = process.env.SILICONFLOW_API_KEY?.trim()
+    if (key && this.config.semantic.enabled) {
+      const semantic = new SemanticIndex(
+        new SiliconFlowEmbedder(key, this.config.semantic.model),
+        this.config.semantic.cachePath ?? join(dirname(this.config.lifePath), 'memory-vectors.jsonl'),
+        { logger: { warn: (message, error) => logger.warn(message, error) } },
+      )
+      semantic.add(life.events())
+      this.semantic = semantic
+      logger.info(`fairy-isla: recall by meaning on (${this.config.semantic.model}, ${semantic.size} memories embedded)`)
+    } else {
+      logger.info('fairy-isla: recall by words only; set SILICONFLOW_API_KEY in .env to recall by meaning too')
+    }
     const backupDir = this.config.backupDir ?? join(dirname(this.config.lifePath), 'backups')
     const backup = () => {
       try {
@@ -161,11 +186,17 @@ export class IslaSelf extends FairySelf {
   }
 
   facts(options: { readonly personId?: string; readonly cue?: string } = {}): FairyFact[] {
-    return toFacts(this.alive().facts({ ...options }))
+    const similar = options.cue && this.lastCue?.text === options.cue ? this.lastCue.similar : undefined
+    return toFacts(this.alive().facts({ ...options, ...(similar && similar.size > 0 ? { similar } : {}) }))
   }
 
   async hear(person: FairyPerson, text: string, where?: string): Promise<FairyHeard> {
-    const { heard, said } = await this.alive().listen({ ...person, text, ...(where ? { where } : {}) })
+    // Searched once per message, beside listening, so the context of this turn can use it.
+    const [{ heard, said }, similar] = await Promise.all([
+      this.alive().listen({ ...person, text, ...(where ? { where } : {}) }),
+      this.semantic ? this.semantic.similar(text) : Promise.resolve(new Map<string, number>()),
+    ])
+    this.lastCue = { text, similar }
     // listen() answers by itself only with the fixed crisis reply.
     return { id: heard.id, ...(said ? { urgent: said.payload.text } : {}) }
   }
@@ -217,7 +248,14 @@ export class IslaSelf extends FairySelf {
   }
 
   async remember(query: string, person?: FairyPerson): Promise<FairyMemory[]> {
-    return toMemories(await this.alive().remember({ text: query, ...(person ? { personId: person.personId } : {}) }))
+    const similar = this.semantic ? await this.semantic.similar(query) : undefined
+    return toMemories(
+      await this.alive().remember({
+        text: query,
+        ...(person ? { personId: person.personId } : {}),
+        ...(similar && similar.size > 0 ? { similar } : {}),
+      }),
+    )
   }
 
   private alive(): Life {
