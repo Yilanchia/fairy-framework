@@ -9,7 +9,7 @@
 //   node scripts/fairy.mjs smoke   boot once in a throwaway home and check she comes alive
 //   node scripts/fairy.mjs memory [query]   what she keeps, and what a search finds (read-only)
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -36,6 +36,13 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
     // pnpm fails with EPERM under non-ASCII paths on Windows; see docs/decisions.md.
     throw new Error(`DSH home must be an ASCII path, got ${home}`)
   }
+  // A conversation started from a device needs a directory to own before it exists.
+  const workspace = join(home, 'workspace')
+  try {
+    mkdirSync(workspace, { recursive: true })
+  } catch {
+    // It is created again when her first device conversation starts; the failure is not fatal.
+  }
   return {
     home,
     lifePath,
@@ -50,6 +57,9 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
       FAIRY_LIFE_PATH: lifePath,
       // What her hands did, one JSON line per tool call. Next to her home, never in the repo.
       FAIRY_AUDIT_PATH: join(home, 'audit.jsonl'),
+      // The devices she may talk to (tokens kept as hashes), and where device conversations live.
+      FAIRY_DEVICES_PATH: join(home, 'devices.json'),
+      FAIRY_SESSION_CWD: workspace,
     },
   }
 }

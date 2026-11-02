@@ -1,5 +1,6 @@
 packages:
   - packages/*/*
+  - apps/*
 
 # DSH ships native addons. Allow only the ones its runtime needs.
 allowBuilds:

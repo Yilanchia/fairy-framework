@@ -45,13 +45,16 @@ export interface Say {
   readonly sessionId?: string
 }
 
-/** The owner's answer to one confirmation. */
+/** The owner's answer to one confirmation, in the labels the confirm offered. */
 export interface Answer {
   readonly type: 'answer'
   readonly id: string
   /** The `confirm` id from the host. */
   readonly confirm: string
-  readonly allow: boolean
+  /** Chosen labels; empty means the owner dismissed it rather than chose. */
+  readonly selected: readonly string[]
+  /** Free text, when the question allows it. */
+  readonly custom?: string
 }
 
 /** What she remembers about something, read-only. */
@@ -119,9 +122,15 @@ export interface Confirm {
   readonly id: string
   /** Answer it with `answer.confirm = id`. */
   readonly tool: string
+  /** What she is asking, in the words the host wrote. */
+  readonly question: string
+  readonly header?: string
+  readonly detail?: string
+  /** Why it needs asking, e.g. 「删除或不可撤销」. */
   readonly why: readonly string[]
-  /** The command, path or text, as the owner will read it. */
-  readonly subject: string
+  readonly options: readonly { readonly label: string; readonly description?: string }[]
+  /** Whether more than one label may be chosen. Defaults to one. */
+  readonly multi?: boolean
 }
 
 /** How she is. `bond` is absent until they have talked. */
@@ -252,7 +261,13 @@ export function parseClient(raw: string): Parsed<ClientMessage> {
     }
     case 'answer': {
       if (!isId(value.confirm)) return refuse('bad-shape', 'answer needs the confirm id it answers')
-      if (typeof value.allow !== 'boolean') return refuse('bad-shape', 'answer needs allow: true or false')
+      if (!Array.isArray(value.selected) || value.selected.some((label) => typeof label !== 'string' || !label.trim())) {
+        return refuse('bad-shape', 'answer.selected must be the labels the owner picked')
+      }
+      if (value.selected.length > 8) return refuse('too-long', 'answer.selected holds at most 8 labels')
+      if (value.custom !== undefined && (typeof value.custom !== 'string' || value.custom.length > MAX_TEXT)) {
+        return refuse('bad-shape', 'answer.custom is malformed')
+      }
       return { ok: true, message: value as unknown as Answer }
     }
     case 'recall': {
@@ -303,8 +318,19 @@ export function parseHost(raw: string): Parsed<HostMessage> {
       return { ok: true, message: value as unknown as Urge }
     }
     case 'confirm': {
-      if (!hasId(value) || !isId(value.tool) || !isText(value.subject)) return refuse('bad-shape', 'confirm needs id, tool and subject')
+      if (!hasId(value) || !isId(value.tool) || !isText(value.question)) {
+        return refuse('bad-shape', 'confirm needs id, tool and the question')
+      }
       if (!Array.isArray(value.why) || value.why.some((item) => typeof item !== 'string')) return refuse('bad-shape', 'confirm.why must be a list of words')
+      if (value.header !== undefined && typeof value.header !== 'string') return refuse('bad-shape', 'confirm.header must be words')
+      if (value.detail !== undefined && typeof value.detail !== 'string') return refuse('bad-shape', 'confirm.detail must be words')
+      if (!Array.isArray(value.options) || value.options.length === 0 || value.options.length > 8) {
+        return refuse('bad-shape', 'confirm.options needs one to eight choices')
+      }
+      if (value.options.some((option) => !record(option) || typeof option.label !== 'string' || !option.label.trim())) {
+        return refuse('bad-shape', 'each choice needs a label')
+      }
+      if (value.multi !== undefined && typeof value.multi !== 'boolean') return refuse('bad-shape', 'confirm.multi is true or absent')
       return { ok: true, message: value as unknown as Confirm }
     }
     case 'status': {

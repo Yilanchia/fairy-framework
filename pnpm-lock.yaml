@@ -18,6 +18,22 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
+  apps/fairy-link-cli:
+    dependencies:
+      '@fairy/link':
+        specifier: workspace:*
+        version: link:../../packages/link/fairy-link
+      '@fairy/protocol':
+        specifier: workspace:*
+        version: link:../../packages/link/fairy-protocol
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   packages/bundle/fairy-bundle:
     dependencies:
       '@fairy/core':
@@ -32,6 +48,9 @@ importers:
       '@fairy/isla':
         specifier: workspace:*
         version: link:../../self/fairy-isla
+      '@fairy/link':
+        specifier: workspace:*
+        version: link:../../link/fairy-link
       '@fairy/senses':
         specifier: workspace:*
         version: link:../../senses/fairy-senses
@@ -56,6 +75,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.1-rc.5
         version: 0.2.1-rc.5(47e11ee6492a70a2f2353a0c993abe69)
+      '@deepseek-ai/dsh-user-questions':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-agent@0.2.1-rc.5(cbd9b78489f743dd32cfe135059e56db))(@deepseek-ai/dsh-llm@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-scope@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-session-projection@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-session@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-scope@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))))(@deepseek-ai/dsh-session@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-scope@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)))(@deepseek-ai/dsh-typert-protocol@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
       '@deepseek-ai/schemastery':
         specifier: 3.18.5
         version: 3.18.5
@@ -114,6 +136,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
+      '@deepseek-ai/dsh-host-webserver':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-session':
         specifier: 0.2.1-rc.5
         version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-scope@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))

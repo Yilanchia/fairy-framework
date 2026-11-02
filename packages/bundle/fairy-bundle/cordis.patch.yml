@@ -50,6 +50,13 @@
         projects: []
         everyMinutes: 60
         perSource: 5
+    # Her channel to the owner's devices: a pairing route and one WebSocket on the Web server she
+    # already runs. Loopback only until the owner decides how to reach her from elsewhere.
+    - id: fairy-link
+      name: '@fairy/link'
+      config:
+        devicesPath: !!js process.env.FAIRY_DEVICES_PATH
+        sessionCwd: !!js process.env.FAIRY_SESSION_CWD
 
 # ── the default agent is Fairy ─────────────────────────────────────────────────
 - id: agent-preset-registry

@@ -3,6 +3,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type Session, type UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@deepseek-ai/dsh-user-questions'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import { DEFAULT_BOND_TONES, DEFAULT_CHAT_STYLE, renderBondTone, renderIdentity, renderMemories, renderSelfContext, renderStatus } from './render.js'
@@ -71,6 +72,25 @@ declare module '@deepseek-ai/dsh-llm' {
     /** A turn Fairy starts herself, because she wanted to say something. */
     'fairy-urge': { kind: 'fairy-urge'; urge: string }
   }
+}
+
+/**
+ * One question to show a device, and the labels it may come back with. Shaped like DeepSeek
+ * Harness's `AskUserQuestionItem`, kept local so presence does not take a dependency on the
+ * question service beyond the waterfall's event name.
+ */
+interface Confirmation {
+  readonly id: string
+  readonly question: string
+  readonly header?: string
+  readonly detail?: string
+  readonly options?: ReadonlyArray<{ readonly label: string; readonly description?: string }>
+  readonly multiSelect?: boolean
+}
+
+/** The part of `@fairy/link` that asks a device; absent when no channel is mounted. */
+interface Confirmer {
+  confirm(question: Confirmation, signal?: AbortSignal): Promise<{ selected: string[]; custom?: string } | undefined>
 }
 
 const WHY_WORDS: Record<FairyUrge['why'], string> = {
@@ -272,6 +292,20 @@ export function apply(ctx: Context, config: Config) {
     carry(resolved.agent, urge)
     return true
   }
+
+  // The question waterfall is Agent-scoped, so the card is handed to a device from here, inside
+  // the agent's own context — a host-level listener never sees it. No device, no answer: the Web UI
+  // asks, and with nobody there the guard refuses (decision 11).
+  ctx.on('user-questions/request', async (request, next) => {
+    const link = ctx.get('fairyLink') as Confirmer | undefined
+    const question = request.questions[0]
+    if (!link || request.questions.length !== 1 || !question?.options?.length) return next()
+    const answer = await link.confirm(question, request.signal)
+    if (!answer) return next()
+    return {
+      answers: [{ id: question.id, selected: answer.selected, ...(answer.custom ? { custom: answer.custom } : {}) }],
+    }
+  })
 
   // She wants to talk to the owner of her own accord: carry it into the conversation they last
   // had with her, as a turn of its own that she starts — open, or reopened.

@@ -74,10 +74,24 @@ pnpm fairy
 
 - 回复里没有标出用了哪些事实，所以对话里的引用暂时不加强记忆；主动回想（`fairy_recall`）会。见 [docs/memory.md](docs/memory.md)。
 - 换一种完全不同的说法问，只靠字面只能找到一半左右。在 `.env` 填上 `SILICONFLOW_API_KEY`（硅基流动，`BAAI/bge-m3` 免费）她就能按意思想起来；不填就只靠字面。注意：填了以后，她记得的内容会发给硅基流动算向量。
-- 她想主动说话时，只能送进一个开着的会话；网页关着、DSH 也没有会话在跑时，那一次就不发。手机推送、微信这类渠道还没有。
+- 她想主动说话时，只能送进一个开着的会话；网页关着、DSH 也没有会话在跑时，那一次就不发（网页关着但会话还在时，她会把上次那个会话唤醒，话说得出去）。
+- 手机 App、手机推送、微信这类渠道还没有。通道已经有了（配对 + WebSocket + 终端客户端），但只监听本机。
 - 追剧之类的消遣还没有；书架机制有了，要的只是一个来源。
 - hands 只是占位。
 - 跨端：现在只监听 127.0.0.1。开放给其他设备之前，要先解决认证和 TLS。
+
+## 从终端和她说话
+
+启动 `pnpm fairy` 后，控制台会打印一行 `fairy-link: pairing code 123456`。在另一台终端：
+
+```bash
+node apps/fairy-link-cli/dist/cli.js pair --host http://127.0.0.1:3090 --code 123456
+node apps/fairy-link-cli/dist/cli.js say "在吗"
+node apps/fairy-link-cli/dist/cli.js status
+node apps/fairy-link-cli/dist/cli.js recall 花生
+```
+
+令牌存在当前目录的 `.fairy-link.json`（已 gitignore）。`say` 的时候如果她要删东西、往外发东西，确认会直接弹在终端里，输入序号就是回答。设计见 [决策 17](docs/decisions.md#17-通道手写-websocket令牌只存哈希确认先问设备)。
 
 ## 给她订阅、给她看项目
 

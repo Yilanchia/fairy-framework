@@ -1,0 +1,22 @@
+{
+  "name": "fairy-link-cli",
+  "version": "0.0.1",
+  "description": "A terminal client for Fairy's link: pair once, then talk to her, ask how she is, and answer a confirmation.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "fairy-link": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@fairy/link": "workspace:*",
+    "@fairy/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "5.8.3"
+  }
+}

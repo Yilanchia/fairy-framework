@@ -82,12 +82,23 @@ class StubOpener {
   }
 }
 
-async function host(opener?: StubOpener) {
+/** Stand-in for `@fairy/link`: records the question, answers as the owner would. */
+class StubLink {
+  readonly asked: string[] = []
+  answer: { selected: string[] } | undefined = { selected: ['允许这一次'] }
+  async confirm(question: { id: string; question: string }): Promise<{ selected: string[] } | undefined> {
+    this.asked.push(question.question)
+    return this.answer
+  }
+}
+
+async function host(opener?: StubOpener, link?: StubLink) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt, {}).await()
   await ctx.plugin(ToolRuntime, {}).await()
   await ctx.plugin(StubSelf).await()
   if (opener) ctx.provide('sessionController', opener)
+  if (link) ctx.provide('fairyLink', link)
   const fiber = ctx.plugin(presence, {
     identityOrder: 50,
     contextOrder: 300,
@@ -345,6 +356,35 @@ test('with no conversation to reopen, that urge waits instead of pretending or c
   await until(() => opener.asked.length > 0)
   assert.deepEqual(opener.asked, ['s-gone'])
   assert.equal(self.urged.length, 0)
+})
+
+test('a question for the owner goes to her device when one is there, and to the Web UI otherwise', async () => {
+  const link = new StubLink()
+  const { ctx } = await host(undefined, link)
+  const ask = (fallback: string) =>
+    (ctx.waterfall as unknown as (name: string, ...args: unknown[]) => Promise<unknown>)(
+      'user-questions/request',
+      { questions: [{ id: 'guard', question: '删吗？', options: [{ label: '允许这一次' }, { label: '不允许' }] }], signal: new AbortController().signal },
+      async () => ({ answers: [{ id: 'guard', selected: [fallback] }] }),
+    )
+
+  // The device answers first: its word is the answer, and the Web UI is never asked.
+  assert.deepEqual(await ask('不允许'), { answers: [{ id: 'guard', selected: ['允许这一次'] }] })
+  assert.deepEqual(link.asked, ['删吗？'])
+
+  // A device that cannot answer (nobody there, or it timed out) hands the card on.
+  link.answer = undefined
+  assert.deepEqual(await ask('不允许'), { answers: [{ id: 'guard', selected: ['不允许'] }] })
+})
+
+test('with no channel mounted, questions stay with the Web UI', async () => {
+  const { ctx } = await host()
+  const answer = await (ctx.waterfall as unknown as (name: string, ...args: unknown[]) => Promise<unknown>)(
+    'user-questions/request',
+    { questions: [{ id: 'q', question: '要吗？', options: [{ label: '要' }] }], signal: new AbortController().signal },
+    async () => ({ answers: [{ id: 'q', selected: ['要'] }] }),
+  )
+  assert.deepEqual(answer, { answers: [{ id: 'q', selected: ['要'] }] })
 })
 
 test('unloading her presence takes everything it registered with it', async () => {

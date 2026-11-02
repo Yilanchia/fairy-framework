@@ -51,13 +51,18 @@
 
 ## 阶段 1：`@fairy/link`，通道协议
 
-进行中（2026-11-02）：协议和配对的地基已经有了，WebSocket 通道还没接。
+基本完成（2026-11-02）：从配对到聊天、问她状态、查记忆、把确认弹到设备上，都已经在临时 home 里真跑通过一次。
 
 - ✅ `@fairy/protocol`：版本化的消息类型，两端共用的 `parseClient` / `parseHost`，未知类型、版本不符、超长、空消息都带稳定的拒绝码。
-- ✅ 配对的地基：`PairingCodes`（一次性、5 分钟、换新的就作废旧的）、`DeviceStore`（令牌只存 SHA-256，可吊销，重启后还在）。
-- ⬜ `POST /fairy/link/pair` 用配对码换令牌。
-- ⬜ `/fairy/link/v1` 的 WebSocket：`hello` 认证、`say` 接进会话、`reply.done`、`status`、`recall`、`sessions`。
-- ⬜ 把 `user-questions/request` 上的确认转成 `confirm` 发给在线设备。
+- ✅ 配对：`POST /fairy/link/pair` 用控制台打印的一次性码换令牌（5 分钟、用一次作废、换新的作废旧的、错 5 次锁 5 分钟）；`DeviceStore` 只存令牌的 SHA-256，可吊销。
+- ✅ `/fairy/link/v1` 的 WebSocket（手写 RFC 6455 文本帧）：`hello` 认证 → `say` 送进她上次的会话（没有就新开一个）→ `reply.done` 带回她的整段回复；`status`、`recall`、`sessions` 可用。
+- ⚠️ 确认转发：`@fairy/link` 的 `confirm()` 和 presence 里 `user-questions/request` 的处理单元测试都过了，但**端到端还没跑通**。实测（2026-11-02）：让 CLI 叫她删一个临时文件，她做完普通调用就停住，设备的确认卡片没出现，回合也没结束——说明确认确实阻塞住了（guard 在等），但没走到设备上。第一件要查的事：`user-questions/request` 用 `scopeTarget(agent, agent)` 派发，presence 的监听是否真的在那个作用域里；其次才是 `ctx.get('fairyLink')` 在作用域内是否可见。
+- ✅ `apps/fairy-link-cli`：`pair` / `say` / `status` / `recall`，能配对、聊天、回答确认。
+- ⬜ 流式：现在只有 `reply.done`（整段），`reply.delta` 的协议和 `assistantStream` 还没接；App 要打字机效果时再做。
+- ⬜ 设备上的确认卡片在 Web UI 回答后不会自动收起（协议还没有撤回帧）。
+- ⬜ 令牌吊销还没接到 Web 设置页（现在是 `ctx.fairyLink.revoke(id)`）。
+
+## 阶段 1（原计划，保留细节）
 
 ### 接到 DSH 上
 

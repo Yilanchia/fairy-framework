@@ -20,6 +20,7 @@
     "@fairy/guard": "workspace:*",
     "@fairy/hands": "workspace:*",
     "@fairy/isla": "workspace:*",
+    "@fairy/link": "workspace:*",
     "@fairy/senses": "workspace:*"
   }
 }

@@ -44,10 +44,12 @@ test('what the owner says is bounded, and empty words are not a message', () => 
   if (!tooLong.ok) assert.equal(tooLong.code, 'too-long')
 })
 
-test('an answer must name the confirmation and say yes or no, not "maybe"', () => {
-  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', allow: true }).ok, true)
+test('an answer names the confirmation and the labels the owner picked', () => {
+  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', selected: ['不允许'] }).ok, true)
+  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', selected: [] }).ok, true, 'dismissing is an answer too')
   assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1' }).ok, false)
-  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', allow: 1 }).ok, false)
+  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', selected: [1] }).ok, false)
+  assert.equal(client({ type: 'answer', id: 'r3', confirm: 'c1', selected: ['x'], custom: '原因是…' }).ok, true)
 })
 
 test('every request frame needs its own id, and unknown types are refused by name', () => {
@@ -92,11 +94,20 @@ test('an urge carries why she speaks and about what', () => {
   assert.equal(host({ type: 'urge', id: 'u1', why: 'share' }).ok, false)
 })
 
-test('a confirmation shows what is being asked and why, and nothing that is not words', () => {
-  const confirm = { type: 'confirm', id: 'c1', tool: 'pwsh', why: ['删除文件或文件夹'], subject: 'Remove-Item -Recurse C:\\tmp\\x' }
+test('a confirmation carries the question and the choices, so any question can be shown', () => {
+  const confirm = {
+    type: 'confirm',
+    id: 'c1',
+    tool: 'pwsh',
+    question: '删除或不可撤销：删除文件或文件夹。要让她做吗？',
+    why: ['删除文件或文件夹'],
+    options: [{ label: '允许这一次' }, { label: '不允许', description: '她会收到“主人没有同意”。' }],
+  }
   assert.equal(host(confirm).ok, true)
   assert.equal(host({ ...confirm, why: 'delete' }).ok, false)
-  assert.equal(host({ ...confirm, subject: '' }).ok, false)
+  assert.equal(host({ ...confirm, options: [] }).ok, false, 'a question with no choices cannot be answered')
+  assert.equal(host({ ...confirm, options: [{ label: ' ' }] }).ok, false)
+  assert.equal(host({ ...confirm, question: '' }).ok, false)
 })
 
 test('status and recall answers are checked down to their fields', () => {

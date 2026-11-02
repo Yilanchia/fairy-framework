@@ -13,3 +13,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# A paired device's token, written by `fairy-link pair`. It is a device; never commit it.
+.fairy-link.json
