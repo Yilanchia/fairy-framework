@@ -133,3 +133,13 @@ Isla 给每个人记着：哪几天来聊过、通常几点来、她和这个人
 - **可逆的升级**：DSH 版本钉死（决策 2），升级是一套固定动作（改版本 → 装 → 测试 → 冒烟 → 手工验一次通道），不是随手 `pnpm update`；生命内核在另一个仓库、单独分支、单独测试。步骤写在 [maintenance.md](maintenance.md)。
 - **不动的底线**：她的生命只追加、只备份、不编辑；一个宿主一个写入者；任何"修"之前先复制。这三条比任何功能都重要，写进 AGENTS.md 和 maintenance.md。
 - 出问题的顺序永远是先看 `doctor`，再查锁、端口、日志，最后才谈备份恢复。
+
+## 20. 公网入口只开她自己的三条路径，并且给她加沙箱
+
+2026-11-02 晚推翻了决策 18 里的"不上公网"：主人不想用 Tailscale，要求"打开就能用"。改成 `https://fairy.lycoreco.cn`——用他已有的域名和 nginx，证书 Let's Encrypt 自动续。
+
+- **只反代三条路径**：`/fairy/app`、`/fairy/link/v1`、`/fairy/link/pair`。nginx 里其余一律 404；DSH 的界面、`/api`、会话、她的生命文件仍然只在 `127.0.0.1:3090` 上。宿主本身没变——它从来没有监听公网地址。
+- **同时给她加 systemd 沙箱**：她能跑 shell，所以"谁能连上她"约等于"谁能在那台机器上跑命令"。`InaccessiblePaths=/www`（博客源码、MySQL 数据、宝塔面板、nginx 配置）和 `/root` 在她的命名空间里不存在，`ProtectSystem=strict` + `ReadWritePaths=/home/fairy` 让其余文件系统只读。实测：从她进程的 `/proc/<pid>/root/www` 读博客源码是 `No such file or directory`。
+- **仍然承认风险**：拿到设备令牌的人能和她说、让她在自己家里动手；guard 只在删除/对外发送/花钱/凭据时问。所以令牌当密码看待。
+- **可逆**：把那个 vhost 一删就回到"完全不暴露"；代码一行不用改。Tailscale 那条路还在，只是不是默认。
+- 踩过的坑记在这里：`InaccessiblePaths` 里的路径必须**存在**，否则 systemd 直接 `status=226/NAMESPACE` 拒绝启动（`/etc/nginx`、`/var/lib/mysql` 在这台机器上都不存在，全在 `/www` 下）。

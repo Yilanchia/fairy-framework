@@ -43,7 +43,7 @@
 - ✅ 两个仓库都拉上去了，`link:` 依赖在服务器上是 `/home/fairy/isla`。
 - ✅ 进程守护：`fairy.service`，`Restart=always`、`MemoryMax=768M`、开机自启。
 - ✅ 迁移她：停掉 PC 上的她 → 拷 `fairy.life.jsonl`（250 事件）、`backups/`、`sessions/`、`devices.json` → 服务器上 `doctor` 全绿 → 她在服务器上真的回了一句话。PC 上那份原样留着、不启动。
-- ⬜ 对外访问：Tailscale 已装、`tailscaled` 在跑，**等主人点授权链接**；之后配 `tailscale serve` 把 3090 反代进私有网络。
+- ✅ 对外访问：`https://fairy.lycoreco.cn/fairy/app/`，nginx 只反代她自己的三条路径，其余 404；证书 Let's Encrypt 自动续期。她和博客之间用 systemd 沙箱隔开。决策与风险见 [decisions.md 20](decisions.md#20-公网入口只开她自己的三条路径并且给她加沙箱)，配置副本在 `scripts/server/`。
 - ⬜ 备份外同步：`backups/` 还只在服务器那块盘上，要同步到另一处（对象存储或主人的 PC）。
 - ⬜ 服务器上 `.env` 已是 600；SSH 还是 root + 密码，需要换密钥并关掉密码登录（要主人在场）。
 - ⬜ 服务器 `reboot-required` 挂着（471 天没重启），挑时间重启一次。

@@ -16,10 +16,33 @@
 | Node | `/opt/node24`（v24.22.2），`/usr/local/bin` 里是软链；**没动系统的包管理器** |
 | 她的家 | `/home/fairy/fairy-framework/.fairy-home/`，和本机同一个结构 |
 | 服务 | `fairy.service`（systemd，`Restart=always`，`MemoryMax=768M`，开机自启） |
-| 端口 | `127.0.0.1:3090`，**只听本机**；对外靠 Tailscale |
+| 端口 | `127.0.0.1:3090`，**只听本机** |
+| 入口 | `https://fairy.lycoreco.cn/fairy/app/`，nginx 只反代 `/fairy/app`、`/fairy/link/v1`、`/fairy/link/pair`，其余 404；证书 `/etc/letsencrypt/live/fairy.lycoreco.cn/`，`certbot.timer` 自动续 |
+| 配置副本 | `scripts/server/`（unit、沙箱 drop-in、vhost），改了要按那里的步骤应用 |
 | 同一台机器上的 | 宝塔面板、nginx（`lycoreco.cn` 的博客）、PHP 8.3、MySQL、astrbot |
 
 和博客的关系：她**没有**改 nginx 配置、没有占 80/443、没有动 PHP/MySQL/宝塔。验收方式是改之前和改之后对 `vhost` 配置取 md5、对博客取 HTTP 状态——两次一致（`f55ddb04…`，`http=301`）。
+
+她的入口是**另一份 vhost 文件**（`/www/server/panel/vhost/nginx/fairy.lycoreco.cn.conf`），博客那份一个字没动。nginx 是全站共用的：**改她的 vhost 之前先 `nginx -t`，通过了再 reload**，不通过就别 reload——否则博客会一起挂。她的配置副本在 `scripts/server/`。
+
+### 她的入口暴露了什么
+
+只有她的页面和通道。DSH 的界面、`/api`、会话、她的生命文件都只在 `127.0.0.1:3090` 上。验证方式（从外面）：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://fairy.lycoreco.cn/fairy/app/   # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://fairy.lycoreco.cn/            # 404
+curl -s -o /dev/null -w '%{http_code}\n' https://fairy.lycoreco.cn/api/        # 404
+```
+
+以及她的进程读不到博客（沙箱生效）：
+
+```bash
+PID=$(systemctl show fairy -p MainPID --value)
+ls /proc/$PID/root/www        # 不存在
+```
+
+想彻底关掉公网入口：删掉 `fairy.lycoreco.cn.conf`，`nginx -t && nginx -s reload`。她还在本机 `127.0.0.1:3090` 上活着，只是外面进不来。
 
 ### 日常命令（都在服务器的 `fairy` 账号下）
 

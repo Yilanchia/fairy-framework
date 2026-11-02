@@ -1,0 +1,24 @@
+[Unit]
+Description=Fairy, the owner's butler agent (DeepSeek Harness + Isla)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fairy
+Group=fairy
+WorkingDirectory=/home/fairy/fairy-framework
+Environment=HOME=/home/fairy
+Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/node scripts/fairy.mjs web --no-open
+Restart=always
+RestartSec=5
+# She answers one owner on one small box; a runaway turn must not take the blog down with it.
+MemoryMax=768M
+TasksMax=256
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
