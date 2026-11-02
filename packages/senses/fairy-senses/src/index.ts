@@ -1,11 +1,13 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@fairy/core'
-import { parseFeed } from './feed.js'
+import { parseFeed, withoutPromotion } from './feed.js'
 import { readProject } from './projects.js'
+import { readSky } from './weather.js'
 
-export { parseFeed, plain, type FeedItem } from './feed.js'
+export { parseFeed, plain, withoutPromotion, type FeedItem } from './feed.js'
 export { parseLog, readProject, subjects, type ProjectItem } from './projects.js'
+export { kindOf, parseSky, readSky, type Sky } from './weather.js'
 
 /**
  * Fairy's senses: what she comes across outside the conversation. Mounted on the host.
@@ -36,6 +38,11 @@ export interface Config {
   everyMinutes: number
   /** At most this many new things per source per look, so one busy feed does not crowd out the rest. */
   perSource: number
+  /**
+   * The sky out of her window is the one over the owner's city. Without it she has no weather at
+   * all rather than a made-up one.
+   */
+  weather?: { city?: string; query?: string; everyMinutes: number }
 }
 
 export const Config: z<Config> = z.object({
@@ -46,6 +53,9 @@ export const Config: z<Config> = z.object({
   projects: z.array(z.string()).default([]).description('Git repositories she may look through, read-only.'),
   everyMinutes: z.natural().min(5).default(60),
   perSource: z.natural().min(1).default(5),
+  weather: z
+    .object({ city: z.string(), query: z.string(), everyMinutes: z.natural().min(10).default(30) })
+    .description('The sky out of her window: the owner\'s city, from wttr.in. No city, no weather.'),
 })
 
 const SUMMARY_CHARS = 400
@@ -73,7 +83,7 @@ export function apply(ctx: Context, config: Config) {
             shelf: 'news',
             item: `${feed.url}#${item.id}`,
             title: item.title,
-            text: item.summary.slice(0, SUMMARY_CHARS),
+            text: withoutPromotion(item.summary).slice(0, SUMMARY_CHARS),
             tags: [...(feed.tags ?? []), ...item.tags].slice(0, 6),
             source,
             ...(item.link ? { link: item.link } : {}),
@@ -94,6 +104,7 @@ export function apply(ctx: Context, config: Config) {
       }
     }
   }
+  if (config.weather?.city) watchSky(ctx, config.weather.city, config.weather)
   if (config.feeds.length === 0 && config.projects.length === 0) {
     ctx.logger.info('fairy-senses: no feeds or projects listed yet; her news and projects shelves stay empty')
     return
@@ -111,4 +122,28 @@ export function apply(ctx: Context, config: Config) {
     clearTimeout(first)
     clearInterval(timer)
   }, 'fairy-senses.timer')
+}
+
+/** The sky over the owner's city, looked at more often than the news. Her life skips repeats. */
+function watchSky(ctx: Context, city: string, weather: NonNullable<Config['weather']>) {
+  const look = async () => {
+    try {
+      const sky = await readSky(city, weather.query ?? city)
+      if (sky) await ctx.fairySelf.perceive({ source: 'weather', what: sky.what, detail: sky.kind })
+    } catch (error) {
+      ctx.logger.warn(`fairy-senses: could not see the sky over ${city}`, error)
+    }
+  }
+  const first = setTimeout(() => void look(), 5_000)
+  const timer = setInterval(() => void look(), weather.everyMinutes * 60_000)
+  first.unref?.()
+  timer.unref?.()
+  // Asleep she notices nothing; the first thing she does on waking is look out of the window.
+  ctx.on('fairy/self-event', (event) => {
+    if (event.kind === 'woke') void look()
+  })
+  ctx.effect(() => () => {
+    clearTimeout(first)
+    clearInterval(timer)
+  }, 'fairy-senses.sky')
 }

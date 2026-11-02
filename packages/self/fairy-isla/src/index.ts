@@ -102,8 +102,9 @@ export class IslaSelf extends FairySelf {
     try {
       life = await Life.open({
         genome: FAIRY_GENOME,
-        // Her room keeps its window and its sky; the bookshelf is replaced by her own pastimes.
-        world: createRoom({ seed: this.config.worldSeed, books: [] }),
+        // Her window looks onto the owner's real sky, reported by fairy-senses; nothing is made up.
+        // The bookshelf is replaced by her own pastimes.
+        world: createRoom({ seed: this.config.worldSeed, books: [], sky: 'host' }),
         archive: new FileArchive(this.config.lifePath),
         activities: FAIRY_ACTIVITIES,
         ...(this.config.reachOut ? { reachOut: { personIds: [this.config.ownerId] } } : {}),

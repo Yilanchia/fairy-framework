@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseFeed, plain } from './feed.js'
+import { parseFeed, plain, withoutPromotion } from './feed.js'
 
 test('reads RSS 2.0 items, with CDATA, entities and categories', () => {
   const items = parseFeed(`<?xml version="1.0"?><rss version="2.0"><channel><title>T</title>
@@ -34,4 +34,13 @@ test('reads Atom entries', () => {
 
 test('plain text keeps no markup', () => {
   assert.equal(plain('a<br/>b &#x4e2d;&#25991; <i>c</i>'), 'a\nb 中文 c')
+})
+
+test('a summary loses the feed\'s own advertising', () => {
+  assert.equal(
+    withoutPromotion('等了好久终于等到今天 #欢迎关注爱范儿官方微信公众号：爱范儿（微信号：ifanr），更多精彩内容第一时间为您奉上。'),
+    '等了好久终于等到今天',
+  )
+  assert.equal(withoutPromotion('第一段。\n本文来自微信公众号「某某」\n第二段。'), '第一段。\n第二段。')
+  assert.equal(withoutPromotion('关注度很高的一次发布。'), '关注度很高的一次发布。')
 })

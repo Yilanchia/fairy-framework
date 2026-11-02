@@ -38,6 +38,16 @@ export function plain(html: string): string {
     .trim()
 }
 
+/** Feeds end their summaries with "follow us on WeChat"; that is not part of the news. */
+export function withoutPromotion(text: string): string {
+  const promotion = /\s*#?(欢迎关注|关注我们|本文来自|扫码|点击阅读原文|阅读原文|原文链接|微信号[:：]).*$/u
+  return text
+    .split('\n')
+    .map((line) => line.replace(promotion, '').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
 function tag(block: string, name: string): string | undefined {
   const match = new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, 'i').exec(block)
   return match ? match[1] : undefined
