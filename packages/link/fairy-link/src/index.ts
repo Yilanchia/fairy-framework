@@ -324,13 +324,26 @@ export class FairyLink extends Service {
       case 'say': {
         const sender = this.sender()
         if (!sender) return send(conn, { type: 'error', id: message.id, code: 'bad-shape', message: 'this host has no conversation controller' })
+        const signal = new AbortController().signal
+        const tell = (sessionId: SessionId) =>
+          sender.prompt(
+            { requestId: randomId('q'), sessionId, mode: 'queue', content: [{ type: 'text', text: message.text }] },
+            signal,
+          )
         const target = await this.sessionFor(conn, message.sessionId, sender)
         this.bind(conn, target)
         conn.reply = ''
-        await sender.prompt(
-          { requestId: randomId('q'), sessionId: target, mode: 'queue', content: [{ type: 'text', text: message.text }] },
-          new AbortController().signal,
-        )
+        try {
+          await tell(target)
+        } catch (error) {
+          // The conversation she remembers may not exist on this host — she moved, or it was
+          // deleted. Open a new one rather than leaving the owner staring at an error. A
+          // conversation the caller named explicitly is their business, and its failure is told.
+          if (message.sessionId) throw error
+          const created = await sender.create({ cwd: this.config.sessionCwd, agentPreset: this.config.agentPreset })
+          this.bind(conn, created.sessionId)
+          await tell(created.sessionId)
+        }
         return
       }
       case 'status': {

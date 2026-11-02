@@ -74,11 +74,14 @@ class StubSelf extends FairySelf {
 class FakeSender implements SessionSender {
   readonly created: Array<{ cwd?: string; agentPreset?: string }> = []
   readonly prompted: Array<{ sessionId: string; text: string }> = []
+  /** Conversations this host actually has; anything else fails like a missing session does. */
+  readonly existing = new Set(['s-old', 's-new'])
   async create(request: { cwd?: string; agentPreset?: string }): Promise<{ sessionId: SessionId }> {
     this.created.push(request)
     return { sessionId: SessionId('s-new') }
   }
   async prompt(request: { sessionId: SessionId; content: ReadonlyArray<{ type: 'text'; text: string }> }): Promise<{ accepted: true }> {
+    if (!this.existing.has(String(request.sessionId))) throw new Error(`session/not-found ${String(request.sessionId)}`)
     this.prompted.push({ sessionId: String(request.sessionId), text: request.content[0]!.text })
     return { accepted: true }
   }
@@ -185,6 +188,19 @@ test('a device that says hello is greeted as one, and its words reach her last c
   const done = inbox.find((message) => message.type === 'reply.done')
   assert.equal(done?.text, '在。说吧。')
   assert.equal(done?.turn, '3')
+  peer.close()
+})
+
+test('a conversation she remembers but this host does not have is replaced, not reported', async () => {
+  // This is what a moved life looks like: her log points at a DSH session that stayed behind.
+  const { ctx, base, sender } = await host({ conversation: 'dsh-session:s-gone' })
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer, inbox } = await device(base, token)
+  peer.send(encode({ type: 'say', id: 'say3', text: '在吗' }))
+  await until(() => sender.prompted.length === 1, 'the prompt')
+  assert.deepEqual(sender.created, [{ cwd: dir, agentPreset: 'fairy' }], 'she gets a new conversation instead of an error')
+  assert.deepEqual(sender.prompted[0], { sessionId: 's-new', text: '在吗' })
+  assert.ok(!inbox.some((message) => message.type === 'error'), 'the owner never sees the failure')
   peer.close()
 })
 
