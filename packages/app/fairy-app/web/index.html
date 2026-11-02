@@ -67,6 +67,8 @@
       #pair.show { display: flex; }
       #pair p { color: var(--dim); font-size: 13px; margin: 0; }
       .hidden { display: none !important; }
+      .row img { display: block; max-width: 100%; border-radius: 8px; margin-top: 6px; }
+      button.ghost { background: var(--card); color: var(--dim); border: 1px solid var(--line); padding: 10px 12px; font-size: 18px; line-height: 1; }
     </style>
   </head>
   <body>
@@ -86,6 +88,8 @@
     <main id="log" class="hidden"></main>
 
     <footer id="composer" class="hidden">
+      <button id="attach" class="ghost" title="发图片" aria-label="发图片">＋</button>
+      <input id="file" type="file" accept="image/*" multiple hidden />
       <input id="text" placeholder="和她说点什么" autocomplete="off" />
       <button id="send">发送</button>
     </footer>

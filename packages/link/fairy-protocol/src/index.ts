@@ -16,6 +16,9 @@ export const MAX_TEXT = 4096
 /** The longest identifier either side may mint. */
 export const MAX_ID = 128
 
+/** The longest base64 picture one frame may carry (about 700 KiB of pixels). */
+export const MAX_IMAGE_CHARS = 960_000
+
 /** What a paired device is: a client the owner types in, a machine node, or the test client. */
 export type DeviceKind = 'app' | 'node' | 'cli'
 
@@ -43,6 +46,26 @@ export interface Say {
   readonly id: string
   readonly text: string
   readonly sessionId?: string
+  /** Pictures, already resized by the device: base64, no data: prefix. */
+  readonly images?: readonly SayImage[]
+}
+
+/** One picture from the owner, small enough to travel in one frame. */
+export interface SayImage {
+  /** `image/png`, `image/jpeg` or `image/webp`. */
+  readonly mediaType: string
+  /** Base64 of the file, without the `data:` prefix. */
+  readonly data: string
+  readonly name?: string
+}
+
+/** What was said so far in one conversation, so a screen that just opened is not blank. */
+export interface HistoryRequest {
+  readonly type: 'history'
+  readonly id: string
+  readonly sessionId?: string
+  /** How many lines back from the newest; the host caps it. */
+  readonly limit?: number
 }
 
 /** The owner's answer to one confirmation, in the labels the confirm offered. */
@@ -79,7 +102,7 @@ export interface SessionsRequest {
   readonly sessionId?: string
 }
 
-export type ClientMessage = Hello | Say | Answer | Recall | StatusRequest | SessionsRequest
+export type ClientMessage = Hello | Say | Answer | Recall | StatusRequest | SessionsRequest | HistoryRequest
 
 /* ── host → device ─────────────────────────────────────────────────────────── */
 
@@ -169,6 +192,14 @@ export interface RecallReply {
   }[]
 }
 
+/** What was said in that conversation, oldest first. */
+export interface HistoryReply {
+  readonly type: 'history'
+  readonly id: string
+  readonly sessionId?: string
+  readonly lines: readonly { readonly id: string; readonly at: number; readonly who: 'owner' | 'fairy'; readonly text: string }[]
+}
+
 /** Something the device asked for did not happen. `id` names the request it answers. */
 export interface Failure {
   readonly type: 'error'
@@ -177,7 +208,7 @@ export interface Failure {
   readonly message: string
 }
 
-export type HostMessage = Welcome | ReplyDelta | ReplyDone | Urge | Confirm | StatusReply | SessionsReply | RecallReply | Failure
+export type HostMessage = Welcome | ReplyDelta | ReplyDone | Urge | Confirm | StatusReply | SessionsReply | RecallReply | HistoryReply | Failure
 
 /* ── validation ───────────────────────────────────────────────────────────── */
 
@@ -213,6 +244,16 @@ function isTime(value: unknown): value is number {
 
 function isDeviceKind(value: unknown): value is DeviceKind {
   return value === 'app' || value === 'node' || value === 'cli'
+}
+
+/** The image types a phone can hand over without the host converting anything. */
+export function isImageType(value: unknown): value is string {
+  return value === 'image/png' || value === 'image/jpeg' || value === 'image/webp'
+}
+
+/** Base64 only, no data: prefix, bounded so one picture fits in a frame. */
+function isImageData(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_IMAGE_CHARS && /^[A-Za-z0-9+/=]+$/u.test(value)
 }
 
 function isClarity(value: unknown): value is 'clear' | 'vague' | 'faint' {
@@ -254,10 +295,30 @@ export function parseClient(raw: string): Parsed<ClientMessage> {
       return { ok: true, message: value as unknown as Hello }
     }
     case 'say': {
-      if (typeof value.text !== 'string' || !value.text.trim()) return refuse('empty', 'say needs some words')
+      const hasImages = Array.isArray(value.images) && value.images.length > 0
+      if (typeof value.text !== 'string') return refuse('bad-shape', 'say.text is text')
+      if (!value.text.trim() && !hasImages) return refuse('empty', 'say needs some words, or a picture')
       if (value.text.length > MAX_TEXT) return refuse('too-long', `one message may hold at most ${MAX_TEXT} characters`)
       if (value.sessionId !== undefined && !isId(value.sessionId)) return refuse('bad-shape', 'sessionId is malformed')
+      if (value.images !== undefined) {
+        if (!Array.isArray(value.images) || value.images.length === 0 || value.images.length > 4) {
+          return refuse('bad-shape', 'one message may carry one to four pictures')
+        }
+        for (const image of value.images) {
+          if (!record(image) || !isImageType(image.mediaType) || !isImageData(image.data)) {
+            return refuse('bad-shape', 'each picture needs a png/jpeg/webp mediaType and base64 data')
+          }
+          if (image.name !== undefined && typeof image.name !== 'string') return refuse('bad-shape', 'a picture name must be text')
+        }
+      }
       return { ok: true, message: value as unknown as Say }
+    }
+    case 'history': {
+      if (value.sessionId !== undefined && !isId(value.sessionId)) return refuse('bad-shape', 'sessionId is malformed')
+      if (value.limit !== undefined && (typeof value.limit !== 'number' || !Number.isInteger(value.limit) || value.limit < 1)) {
+        return refuse('bad-shape', 'limit is a positive whole number of lines')
+      }
+      return { ok: true, message: value as unknown as HistoryRequest }
     }
     case 'answer': {
       if (!isId(value.confirm)) return refuse('bad-shape', 'answer needs the confirm id it answers')
@@ -357,6 +418,17 @@ export function parseHost(raw: string): Parsed<HostMessage> {
         return refuse('bad-shape', 'each memory needs id, clarity and text')
       }
       return { ok: true, message: value as unknown as RecallReply }
+    }
+    case 'history': {
+      if (!hasId(value) || !Array.isArray(value.lines)) return refuse('bad-shape', 'history needs id and lines')
+      if (value.lines.some((line) => !record(line) || !isId(line.id) || !isTime(line.at) || typeof line.text !== 'string')) {
+        return refuse('bad-shape', 'each line needs id, at and text')
+      }
+      if (value.lines.some((line) => (line as { who?: unknown }).who !== 'owner' && (line as { who?: unknown }).who !== 'fairy')) {
+        return refuse('bad-shape', "each line says who said it: 'owner' or 'fairy'")
+      }
+      if (value.sessionId !== undefined && !isId(value.sessionId)) return refuse('bad-shape', 'history.sessionId is malformed')
+      return { ok: true, message: value as unknown as HistoryReply }
     }
     case 'error': {
       if (typeof value.code !== 'string' || typeof value.message !== 'string') return refuse('bad-shape', 'error needs code and message')

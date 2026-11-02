@@ -7,7 +7,15 @@ const KEY_TOKEN = 'fairy-app:token'
 const KEY_NAME = 'fairy-app:name'
 
 const $ = (id) => document.getElementById(id)
-const state = { socket: undefined, token: localStorage.getItem(KEY_TOKEN), name: localStorage.getItem(KEY_NAME) ?? '我的设备', retry: 0, timer: undefined }
+const state = {
+  socket: undefined,
+  token: localStorage.getItem(KEY_TOKEN),
+  name: localStorage.getItem(KEY_NAME) ?? '我的设备',
+  retry: 0,
+  timer: undefined,
+  /** Set when a history reply is on its way, so it replaces the log instead of appending. */
+  awaitingHistory: false,
+}
 
 function setState(text, bad = false) {
   const el = $('state')
@@ -24,10 +32,22 @@ function show(which) {
 function line(kind, text) {
   const row = document.createElement('div')
   row.className = kind === 'note' ? 'note' : `row ${kind}`
-  row.textContent = text
+  if (text) {
+    const words = document.createElement('span')
+    words.textContent = text
+    row.append(words)
+  }
   $('log').append(row)
   $('log').scrollTop = $('log').scrollHeight
   return row
+}
+
+function picture(row, mediaType, data) {
+  const image = document.createElement('img')
+  image.src = `data:${mediaType};base64,${data}`
+  image.alt = '图片'
+  image.loading = 'lazy'
+  row.append(image)
 }
 
 function socketUrl() {
@@ -79,19 +99,27 @@ function connect() {
       case 'welcome':
         state.retry = 0
         setState(`连着 ${message.name}`)
+        // What was said before, so opening the page is not a blank room.
+        state.awaitingHistory = true
+        send({ type: 'history', id: `history-${crypto.randomUUID()}`, limit: 60 })
+        break
+      case 'history':
+        if (state.awaitingHistory) {
+          $('log').textContent = ''
+          state.awaitingHistory = false
+        }
+        for (const entry of message.lines) line(entry.who === 'owner' ? 'me' : 'her', entry.text)
+        if (message.lines.length === 0) line('note', '这里还没有说过话。')
         break
       case 'reply.done':
-        line('her', message.text)
-        break
       case 'reply.delta':
-        // Not sent yet (only whole replies arrive); kept so the page does not break when it is.
+        // Only whole replies are sent today; both are rendered the same way.
         line('her', message.text)
         break
       case 'urge':
         line('note', `她主动找你：${message.about}`)
         break
       case 'confirm':
-        // Stage 2 renders buttons; until then say plainly what she is waiting for.
         line('note', `她需要你点头：${message.question}`)
         break
       case 'error':
@@ -162,10 +190,45 @@ function say() {
   $('text').value = ''
 }
 
+/**
+ * A phone photo is several megabytes; one frame is not. Downscale to a long edge of 1280 and
+ * re-encode as JPEG, which lands around 200–400 KB and still shows her everything she needs.
+ */
+async function shrink(file) {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close?.()
+  const url = canvas.toDataURL('image/jpeg', 0.72)
+  return { mediaType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1), name: file.name || 'photo.jpg', preview: url }
+}
+
+async function attach() {
+  const files = [...($('file').files ?? [])].slice(0, 4)
+  $('file').value = ''
+  if (files.length === 0) return
+  const text = $('text').value.trim()
+  try {
+    const images = []
+    for (const file of files) images.push(await shrink(file))
+    if (!send({ type: 'say', id: `say-${crypto.randomUUID()}`, text, images: images.map(({ mediaType, data, name }) => ({ mediaType, data, name })) })) return
+    const row = line('me', text)
+    for (const image of images) picture(row, image.mediaType, image.data)
+    $('text').value = ''
+  } catch (problem) {
+    line('note', `这张图发不出去：${problem instanceof Error ? problem.message : String(problem)}`)
+  }
+}
+
 $('pairButton').addEventListener('click', pair)
 $('code').addEventListener('keydown', (event) => event.key === 'Enter' && pair())
 $('send').addEventListener('click', say)
 $('text').addEventListener('keydown', (event) => event.key === 'Enter' && say())
+$('attach').addEventListener('click', () => $('file').click())
+$('file').addEventListener('change', attach)
 $('name').value = state.name
 
 if (state.token) connect()

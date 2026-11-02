@@ -36,6 +36,30 @@ test('hello needs a token, a device name and a known kind', () => {
   }
 })
 
+test('a picture may ride along, or make a message on its own, but never unbounded', () => {
+  const png = Buffer.from('x'.repeat(64)).toString('base64')
+  assert.equal(client({ type: 'say', id: 's1', text: '看', images: [{ mediaType: 'image/png', data: png }] }).ok, true)
+  assert.equal(client({ type: 'say', id: 's2', text: '', images: [{ mediaType: 'image/jpeg', data: png }] }).ok, true, 'a photo needs no caption')
+  assert.equal(client({ type: 'say', id: 's3', text: '' }).ok, false, 'but empty means nothing at all')
+  assert.equal(client({ type: 'say', id: 's4', text: 'x', images: [{ mediaType: 'image/gif', data: png }] }).ok, false)
+  assert.equal(client({ type: 'say', id: 's5', text: 'x', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,AAA' }] }).ok, false)
+  assert.equal(client({ type: 'say', id: 's6', text: 'x', images: [] }).ok, false)
+  const many = Array.from({ length: 5 }, () => ({ mediaType: 'image/png', data: png }))
+  assert.equal(client({ type: 'say', id: 's7', text: 'x', images: many }).ok, false, 'at most four pictures')
+})
+
+test('history asks for words already said, and the answer is checked like everything else', () => {
+  assert.equal(client({ type: 'history', id: 'h1' }).ok, true)
+  assert.equal(client({ type: 'history', id: 'h2', limit: 20 }).ok, true)
+  assert.equal(client({ type: 'history', id: 'h3', limit: 0 }).ok, false)
+  assert.equal(
+    host({ type: 'history', id: 'h1', lines: [{ id: 'e1', at: 0, who: 'owner', text: '在吗' }, { id: 'e2', at: 1, who: 'fairy', text: '在。' }] }).ok,
+    true,
+  )
+  assert.equal(host({ type: 'history', id: 'h1', lines: [{ id: 'e1', at: 0, who: 'nobody', text: 'x' }] }).ok, false)
+  assert.equal(host({ type: 'history', id: 'h1', lines: [{ id: 'e1', at: 0, who: 'owner' }] }).ok, false)
+})
+
 test('what the owner says is bounded, and empty words are not a message', () => {
   assert.equal(client({ type: 'say', id: 'r2', text: '   ' }).ok, false)
   assert.equal(client({ type: 'say', id: 'r2', text: 'x'.repeat(MAX_TEXT) }).ok, true)

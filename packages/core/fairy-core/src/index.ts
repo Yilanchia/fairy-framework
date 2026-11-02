@@ -171,6 +171,19 @@ export abstract class FairySelf extends Service {
    * the host reopens that conversation instead of dropping them.
    */
   abstract lastConversation(): string | undefined
+  /**
+   * What was said in one conversation, oldest first: her own record of it, not the harness's.
+   * `where` picks the conversation; without it, the most recent lines across all of them.
+   */
+  abstract conversation(options?: { readonly where?: string; readonly limit?: number }): FairyLine[]
+}
+
+/** One line of a conversation, as she keeps it. */
+export interface FairyLine {
+  readonly id: string
+  readonly at: number
+  readonly who: 'owner' | 'fairy'
+  readonly text: string
 }
 
 /** Something for one of her shelves: an article, a commit. */

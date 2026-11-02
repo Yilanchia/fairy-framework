@@ -66,9 +66,12 @@ class StubSelf extends FairySelf {
     return [{ id: 'e9', at: 0, clarity: 'clear', text: '11月2日 10:30 主人对你说：我对花生过敏' }]
   }
   /** Where her last conversation was kept; the tests set it as if she had talked before. */
-  conversation: string | undefined
+  conversationWhere: string | undefined
   lastConversation(): string | undefined {
-    return this.conversation
+    return this.conversationWhere
+  }
+  conversation(): import('./index.js').FairyLine[] {
+    return []
   }
 }
 
@@ -193,6 +196,22 @@ test('a turn enters her life: heard before the model is asked, answered when it 
   assert.ok(spoken!.text.length <= 41, 'a long reply is kept to its start')
 })
 
+test('a picture she was shown is remembered as a picture, without its bytes', async () => {
+  const { ctx, self } = await host()
+  const target = agent()
+  const withPhoto = {
+    id: 'm-photo',
+    role: 'user',
+    content: [{ type: 'image', mediaType: 'image/jpeg', data: 'AAAA' }],
+    source: { kind: 'user' },
+  } as unknown as UserMessage
+  await preStep(ctx, target, [withPhoto])
+  assert.deepEqual(
+    self.heard.map((entry) => entry.text),
+    ['［图片］'],
+  )
+})
+
 test('only what a person typed is heard, and a turn that said nothing records nothing', async () => {
   const { ctx, self } = await host()
   const target = agent()
@@ -308,7 +327,7 @@ test('with no window open, her words reopen the conversation the owner last used
   const reopened = agent('s-cold')
   const opener = new StubOpener({ agent: reopened.agent, followups: reopened.followups })
   const { ctx, self } = await host(opener)
-  self.conversation = 'dsh-session:s-cold'
+  self.conversationWhere = 'dsh-session:s-cold'
 
   const urge = { id: 'e70', at: 0, personId: 'owner', name: '主人', why: 'missed' as const, about: '两天没听他说话了' }
   ctx.emit('fairy/urge', urge)
@@ -340,7 +359,7 @@ test('with no conversation to reopen, that urge waits instead of pretending or c
   assert.deepEqual(opener.asked, [])
 
   // One exists but is gone from the host: still nothing lands, and nothing throws.
-  self.conversation = 'dsh-session:s-gone'
+  self.conversationWhere = 'dsh-session:s-gone'
   ctx.emit('fairy/urge', urge)
   await until(() => opener.asked.length > 0)
   assert.deepEqual(opener.asked, ['s-gone'])

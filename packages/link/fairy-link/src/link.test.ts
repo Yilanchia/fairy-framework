@@ -12,6 +12,7 @@ import {
   type FairyFact,
   type FairyHeard,
   type FairyIdentity,
+  type FairyLine,
   type FairyMemory,
   type FairyNote,
   type FairyPerception,
@@ -31,7 +32,7 @@ after(async () => {
 })
 
 class StubSelf extends FairySelf {
-  conversation: string | undefined = 'dsh-session:s-old'
+  conversationWhere: string | undefined = 'dsh-session:s-old'
   identity(): FairyIdentity {
     return { name: 'Fairy', voice: '冷静', origin: '测试' }
   }
@@ -67,22 +68,37 @@ class StubSelf extends FairySelf {
     void text
   }
   lastConversation(): string | undefined {
-    return this.conversation
+    return this.conversationWhere
+  }
+  conversation(): FairyLine[] {
+    return [
+      { id: 'e100', at: 900, who: 'owner', text: '在吗' },
+      { id: 'e101', at: 1000, who: 'fairy', text: '在。' },
+    ]
   }
 }
 
 class FakeSender implements SessionSender {
   readonly created: Array<{ cwd?: string; agentPreset?: string }> = []
-  readonly prompted: Array<{ sessionId: string; text: string }> = []
+  readonly prompted: Array<{ sessionId: string; text: string; image?: string }> = []
   /** Conversations this host actually has; anything else fails like a missing session does. */
   readonly existing = new Set(['s-old', 's-new'])
   async create(request: { cwd?: string; agentPreset?: string }): Promise<{ sessionId: SessionId }> {
     this.created.push(request)
     return { sessionId: SessionId('s-new') }
   }
-  async prompt(request: { sessionId: SessionId; content: ReadonlyArray<{ type: 'text'; text: string }> }): Promise<{ accepted: true }> {
+  async prompt(request: {
+    sessionId: SessionId
+    content: ReadonlyArray<{ type: 'text'; text: string } | { type: 'image'; mediaType: string; data: string; name?: string }>
+  }): Promise<{ accepted: true }> {
     if (!this.existing.has(String(request.sessionId))) throw new Error(`session/not-found ${String(request.sessionId)}`)
-    this.prompted.push({ sessionId: String(request.sessionId), text: request.content[0]!.text })
+    const text = request.content.find((part) => part.type === 'text')
+    const image = request.content.find((part) => part.type === 'image')
+    this.prompted.push({
+      sessionId: String(request.sessionId),
+      text: text && text.type === 'text' ? text.text : '',
+      ...(image && image.type === 'image' ? { image: image.mediaType } : {}),
+    })
     return { accepted: true }
   }
   async list(): Promise<{ items: Array<{ sessionId: SessionId; updatedAt: number }> }> {
@@ -94,7 +110,7 @@ async function host(options: { conversation?: string | undefined } = {}, link: P
   const ctx = new Context()
   await ctx.plugin(StubSelf).await()
   const self = ctx.fairySelf as StubSelf
-  if ('conversation' in options) self.conversation = options.conversation
+  if ('conversation' in options) self.conversationWhere = options.conversation
   const web = ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
   await web.await()
   fibers.push(web)
@@ -189,6 +205,46 @@ test('repeated wrong codes from anywhere pause pairing, even for the right code'
   const paused = await fetch(`${base}/fairy/link/pair`, { method: 'POST', body: JSON.stringify({ code: 'fairy-owner-2026', name: 'x' }) })
   assert.equal(paused.status, 429, 'the lockout applies before the code is even looked at')
   assert.equal(ctx.fairyLink.devices().length, 0)
+})
+
+test('a screen that just opened can ask what was said before', async () => {
+  const { ctx, base } = await host()
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer, inbox } = await device(base, token)
+  peer.send(encode({ type: 'history', id: 'h1', limit: 20 }))
+  await until(() => inbox.some((message) => message.type === 'history'), 'the history')
+  const history = inbox.find((message) => message.type === 'history')!
+  assert.deepEqual(
+    history.lines.map((line) => [line.who, line.text]),
+    [
+      ['owner', '在吗'],
+      ['fairy', '在。'],
+    ],
+  )
+  peer.close()
+})
+
+test('a picture travels with the words and arrives as an image part', async () => {
+  const { ctx, base, sender } = await host()
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer } = await device(base, token)
+  const data = Buffer.from('not-really-a-png').toString('base64')
+  peer.send(encode({ type: 'say', id: 's1', text: '看这个', images: [{ mediaType: 'image/png', data, name: 'a.png' }] }))
+  await until(() => sender.prompted.length === 1, 'the prompt')
+  assert.equal(sender.prompted[0]?.text, '看这个')
+  assert.equal(sender.prompted[0]?.image, 'image/png')
+  peer.close()
+})
+
+test('a picture on its own is a message too', async () => {
+  const { ctx, base, sender } = await host()
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer } = await device(base, token)
+  const data = Buffer.from('x').toString('base64')
+  peer.send(encode({ type: 'say', id: 's2', text: '', images: [{ mediaType: 'image/jpeg', data }] }))
+  await until(() => sender.prompted.length === 1, 'the prompt')
+  assert.equal(sender.prompted[0]?.image, 'image/jpeg')
+  peer.close()
 })
 
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {

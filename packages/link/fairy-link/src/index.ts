@@ -32,7 +32,10 @@ export interface SessionSender {
       readonly requestId: string
       readonly sessionId: SessionId
       readonly mode: 'queue' | 'steer'
-      readonly content: ReadonlyArray<{ readonly type: 'text'; readonly text: string }>
+      readonly content: ReadonlyArray<
+        | { readonly type: 'text'; readonly text: string }
+        | { readonly type: 'image'; readonly mediaType: string; readonly data: string; readonly name?: string }
+      >
     },
     signal: AbortSignal,
   ): Promise<{ readonly accepted: true }>
@@ -381,11 +384,17 @@ export class FairyLink extends Service {
         const sender = this.sender()
         if (!sender) return send(conn, { type: 'error', id: message.id, code: 'bad-shape', message: 'this host has no conversation controller' })
         const signal = new AbortController().signal
+        const content = [
+          ...(message.images ?? []).map((image) => ({
+            type: 'image' as const,
+            mediaType: image.mediaType,
+            data: image.data,
+            ...(image.name ? { name: image.name } : {}),
+          })),
+          ...(message.text.trim() ? [{ type: 'text' as const, text: message.text }] : []),
+        ]
         const tell = (sessionId: SessionId) =>
-          sender.prompt(
-            { requestId: randomId('q'), sessionId, mode: 'queue', content: [{ type: 'text', text: message.text }] },
-            signal,
-          )
+          sender.prompt({ requestId: randomId('q'), sessionId, mode: 'queue', content }, signal)
         const target = await this.sessionFor(conn, message.sessionId, sender)
         this.bind(conn, target)
         conn.reply = ''
@@ -400,6 +409,19 @@ export class FairyLink extends Service {
           this.bind(conn, created.sessionId)
           await tell(created.sessionId)
         }
+        return
+      }
+      case 'history': {
+        // Her own record of the conversation, not the harness's session store: what she would say
+        // if asked, and what survived the move between machines.
+        const where = message.sessionId ? `${PREFIX}${message.sessionId}` : this.ctx.fairySelf.lastConversation()
+        const lines = this.ctx.fairySelf.conversation({ ...(where ? { where } : {}), limit: message.limit ?? 40 })
+        send(conn, {
+          type: 'history',
+          id: message.id,
+          ...(message.sessionId ? { sessionId: message.sessionId } : {}),
+          lines: lines.map((line) => ({ id: line.id, at: line.at, who: line.who, text: line.text.slice(0, 2000) })),
+        })
         return
       }
       case 'status': {

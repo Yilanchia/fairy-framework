@@ -3,6 +3,7 @@ import {
   type FairyFact,
   type FairyHeard,
   type FairyIdentity,
+  type FairyLine,
   type FairyMemory,
   type FairyNote,
   type FairyPerception,
@@ -273,6 +274,35 @@ export class IslaSelf extends FairySelf {
       if (typeof where === 'string' && where) return where
     }
     return undefined
+  }
+
+  /**
+   * The lines of one conversation, oldest first. Her life holds what was said and what she said
+   * back, tied by `inReplyTo`, so a conversation is "the heard events at that address and the
+   * things said in answer to them". Nothing about the harness's own session store is read here.
+   */
+  conversation(options: { where?: string; limit?: number } = {}): FairyLine[] {
+    const limit = Math.max(1, Math.min(options.limit ?? 40, 200))
+    const events = this.alive().events()
+    const answers = new Set<string>()
+    if (options.where !== undefined) {
+      for (const event of events) {
+        if (event.kind === 'heard' && (event.payload as { where?: unknown }).where === options.where) answers.add(event.id)
+      }
+    }
+    const lines: FairyLine[] = []
+    for (let index = events.length - 1; index >= 0 && lines.length < limit; index--) {
+      const event = events[index]!
+      if (event.kind !== 'heard' && event.kind !== 'said') continue
+      const payload = event.payload as { text?: unknown; where?: unknown; inReplyTo?: unknown }
+      const text = typeof payload.text === 'string' ? payload.text : ''
+      if (!text) continue
+      if (options.where !== undefined) {
+        if (event.kind === 'heard' ? payload.where !== options.where : !answers.has(String(payload.inReplyTo))) continue
+      }
+      lines.push({ id: event.id, at: event.at, who: event.kind === 'heard' ? 'owner' : 'fairy', text })
+    }
+    return lines.reverse()
   }
 
   private alive(): Life {

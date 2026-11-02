@@ -118,7 +118,8 @@ export function humanText(messages: readonly UserMessage[]): string {
   return messages
     .filter((message) => message.source.kind === 'user')
     .flatMap((message) => message.content)
-    .map((block) => (block.type === 'text' ? block.text : ''))
+    // A picture is something she was shown; her life keeps that it arrived, not its bytes.
+    .map((block) => (block.type === 'text' ? block.text : block.type === 'image' ? '［图片］' : ''))
     .join('\n')
     .trim()
 }

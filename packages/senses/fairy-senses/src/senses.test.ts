@@ -36,6 +36,9 @@ class Watched extends FairySelf {
   lastConversation() {
     return undefined
   }
+  conversation() {
+    return []
+  }
 }
 
 test('she looks out of the window when she wakes, and sees the real sky', async (t) => {
