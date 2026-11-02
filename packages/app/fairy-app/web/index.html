@@ -76,8 +76,8 @@
     </header>
 
     <section id="pair">
-      <p>第一次用：在宿主的控制台上找 <code>fairy-link: pairing code</code> 那六位数字。</p>
-      <input id="code" inputmode="numeric" autocomplete="one-time-code" placeholder="配对码" />
+      <p>第一次用：在宿主上跑 <code>node scripts/fairy.mjs pair</code>，把打印出来的配对码填进来（六位数字，或者你自己设的那一串）。</p>
+      <input id="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="配对码" />
       <input id="name" placeholder="这台设备的名字" />
       <button id="pairButton">配对</button>
       <p id="pairError" class="hidden"></p>

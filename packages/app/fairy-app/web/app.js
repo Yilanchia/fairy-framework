@@ -125,8 +125,10 @@ async function pair() {
   const name = $('name').value.trim() || '我的设备'
   const error = $('pairError')
   error.classList.add('hidden')
-  if (!/^\d{6}$/.test(code)) {
-    error.textContent = '配对码是 6 位数字。'
+  // The host decides what a valid code is: six digits that rotate, or a long fixed one the owner
+  // keeps. The page only refuses an empty box.
+  if (!code || code.length > 128) {
+    error.textContent = '配对码没填。'
     error.classList.remove('hidden')
     return
   }
