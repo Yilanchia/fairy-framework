@@ -65,13 +65,29 @@ class StubSelf extends FairySelf {
     this.searched.push(query)
     return [{ id: 'e9', at: 0, clarity: 'clear', text: '11月2日 10:30 主人对你说：我对花生过敏' }]
   }
+  /** Where her last conversation was kept; the tests set it as if she had talked before. */
+  conversation: string | undefined
+  lastConversation(): string | undefined {
+    return this.conversation
+  }
 }
 
-async function host() {
+/** Stand-in for the Web app's session controller: reopens one closed conversation on demand. */
+class StubOpener {
+  readonly asked: string[] = []
+  constructor(private readonly answer: { agent: Agent; followups: UserMessage[] } | { error: unknown }) {}
+  async resolveAgent(sessionId: unknown): Promise<{ agent: Agent } | { error: unknown }> {
+    this.asked.push(String(sessionId))
+    return 'agent' in this.answer ? { agent: this.answer.agent } : this.answer
+  }
+}
+
+async function host(opener?: StubOpener) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt, {}).await()
   await ctx.plugin(ToolRuntime, {}).await()
   await ctx.plugin(StubSelf).await()
+  if (opener) ctx.provide('sessionController', opener)
   const fiber = ctx.plugin(presence, {
     identityOrder: 50,
     contextOrder: 300,
@@ -86,10 +102,19 @@ async function host() {
 }
 
 /** Just enough of an agent and its session for what presence reads. */
-function agent() {
-  const session = { id: 's-1' } as unknown as Session
+function agent(id = 's-1') {
+  const session = { id } as unknown as Session
   const followups: UserMessage[] = []
   return { session, followups, agent: { session, followup: (message: UserMessage) => followups.push(message) } as unknown as Agent }
+}
+
+/** Waits for something another fiber does, without fixing how many ticks it takes. */
+async function until(done: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    if (done()) return
+    await new Promise((resolve) => setTimeout(resolve, 1))
+  }
+  throw new Error('timed out waiting')
 }
 
 function message(text: string, kind = 'user'): UserMessage {
@@ -276,6 +301,49 @@ test('an urge she decides not to act on is not recorded as said', async () => {
   reply(ctx, target, '…')
   emit(ctx, target, 'turn/end', { turn: 2, reason: { kind: 'completed' } })
   await settle()
+  assert.equal(self.urged.length, 0)
+})
+
+test('with no window open, her words reopen the conversation the owner last used', async () => {
+  const reopened = agent('s-cold')
+  const opener = new StubOpener({ agent: reopened.agent, followups: reopened.followups })
+  const { ctx, self } = await host(opener)
+  self.conversation = 'dsh-session:s-cold'
+
+  const urge = { id: 'e70', at: 0, personId: 'owner', name: '主人', why: 'missed' as const, about: '两天没听他说话了' }
+  ctx.emit('fairy/urge', urge)
+  await until(() => reopened.followups.length > 0)
+  assert.deepEqual(opener.asked, ['s-cold'])
+  const turn = reopened.followups[0]!
+  assert.deepEqual(turn.source, { kind: 'fairy-urge', urge: 'e70' })
+
+  // The harness runs that turn: she is not answering anything the owner said, and her words are kept.
+  await preStep(ctx, reopened, [turn])
+  assert.equal(self.heard.length, 0)
+  reply(ctx, reopened, '主人，两天没动静了，你在忙什么。')
+  emit(ctx, reopened, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await settle()
+  assert.deepEqual(
+    self.urged.map((item) => [item.urge.id, item.text]),
+    [['e70', '主人，两天没动静了，你在忙什么。']],
+  )
+})
+
+test('with no conversation to reopen, that urge waits instead of pretending or crashing', async () => {
+  const opener = new StubOpener({ error: new Error('no such session') })
+  const { ctx, self } = await host(opener)
+  const urge = { id: 'e80', at: 0, personId: 'owner', why: 'share' as const, about: '一篇讲芯片的文章' }
+
+  // She has never had a conversation: there is nowhere to put it, and nothing is asked of the host.
+  ctx.emit('fairy/urge', urge)
+  await settle()
+  assert.deepEqual(opener.asked, [])
+
+  // One exists but is gone from the host: still nothing lands, and nothing throws.
+  self.conversation = 'dsh-session:s-gone'
+  ctx.emit('fairy/urge', urge)
+  await until(() => opener.asked.length > 0)
+  assert.deepEqual(opener.asked, ['s-gone'])
   assert.equal(self.urged.length, 0)
 })
 

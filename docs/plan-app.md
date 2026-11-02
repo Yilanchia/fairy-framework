@@ -115,12 +115,13 @@
 
 ## 阶段 3：网页关着也能找到主人
 
-现在她想说话时，只能送进一个**开着**的会话，网页一关就发不出去（`fairy-presence` 里 `ctx.on('fairy/urge', ...)` 找不到 agent 就放弃）。
+半成品：她的话已经能落进一个**关着**的会话（2026-11-02），但还没有推送通道，手机和 App 收不到。
 
-- 改成：找不到开着的会话时，用 `sessionController.resolveAgent(上次的会话 id)` 把冷会话唤醒，再 `followup`。DSH 的定时提醒（`@deepseek-ai/dsh-schedule`）就是这样投递的，照着它做。上次的会话 id 可以从她最近一条 `heard` 的 `where`（`dsh-session:<id>`）拿到。
-- `@fairy/link` 把她这一轮说的话作为 `urge` 推给在线设备；设备都不在线时，走系统推送。
-- 推送：国内安卓没有可靠的 FCM，要接厂商通道或者聚合推送（极光、个推）；iOS 用 APNs。这件事要主人定（见下面）。第一版可以只做“App 在前台或后台保活时通过 WebSocket 收到”。
-- 她主动说的话照样写进她的生命（`speakUp`），推送只是送达方式。
+- ✅ 找不到开着的会话时，用 `ctx.get('sessionController').resolveAgent(上次的会话 id)` 把冷会话唤醒，再 `followup`，当作一轮她自己开始的对话送进去。上次的会话 id 来自她最近一条 `heard` 的 `where`（`dsh-session:<id>`），由 `FairySelf.lastConversation()` 提供。见 [决策 16](decisions.md#16-网页关着时她的话也能落进上次那个会话)。
+- ✅ 唤醒失败（没有会话、宿主没有 `sessionController`、会话已不在）时这次不发，只记日志，不写 `speakUp`。
+- ⬜ `@fairy/link` 把她这一轮说的话作为 `urge` 推给在线设备（阶段 1 做出来以后接）。
+- ⬜ 设备都不在线时走系统推送。国内安卓没有可靠的 FCM，要接厂商通道或者聚合推送（极光、个推）；iOS 用 APNs。这件事要主人定（见下面）。第一版可以只做“App 在前台或后台保活时通过 WebSocket 收到”。
+- ✅ 她主动说的话照样写进她的生命（`speakUp`），推送只是送达方式。
 - 主人那时候可能在睡觉：送达方式要尊重设备自己的免打扰，Fairy 这边不另设上限（主人说过“有事就可以发”）。
 
 **验收**：网页和 App 都关着，她想找主人时，手机收到通知；点开 App 能看到这句话，回复后她记得这是在回应她主动找的那次。

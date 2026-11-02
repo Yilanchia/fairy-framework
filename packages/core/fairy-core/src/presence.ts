@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
+import { SessionId, type Session, type UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
@@ -77,6 +77,22 @@ const WHY_WORDS: Record<FairyUrge['why'], string> = {
   pending: '你还有一件答应主人的事没办完',
   share: '你刚看到一样东西，觉得主人会感兴趣',
   missed: '你有一阵子没和主人说话了，想找他聊聊',
+}
+
+/**
+ * The prefix her life uses for a conversation's address, and the pointer `lastConversation()`
+ * returns. It is the same string `heard.where` is recorded with.
+ */
+const CONVERSATION = 'dsh-session:'
+
+/**
+ * The one part of DeepSeek Harness's session controller her presence needs: reopening a
+ * conversation that no agent is attached to any more. Shaped like `SessionController.resolveAgent`,
+ * whose service is mounted by the Web app; absent in a deployment without it, and then her words
+ * wait for the owner to come back instead.
+ */
+interface SessionOpener {
+  resolveAgent(sessionId: SessionId): Promise<{ agent: Agent } | { error: unknown }>
 }
 
 /** What the model sees for a turn she starts. Nobody typed it, and it says so. */
@@ -210,22 +226,64 @@ export function apply(ctx: Context, config: Config) {
     recorded.catch((error: unknown) => ctx.logger.warn('fairy-presence: could not record her reply', error))
   })
 
+  /**
+   * Puts words of her own into a conversation as a turn she starts, and remembers the turn they
+   * belong to so `agent/pre-step` picks the urge up and `turn/end` records what she said.
+   */
+  const carry = (agentInTurn: Agent, urge: FairyUrge): void => {
+    const session = agentInTurn.session
+    agents.set(session, { agent: agentInTurn, lastSeen: Date.now() })
+    const turn = turnOf(session)
+    turn.pendingUrges.push(urge)
+    try {
+      agentInTurn.followup(
+        createUserMessage({
+          content: [{ type: 'text', text: renderUrge(urge) }],
+          source: { kind: 'fairy-urge', urge: urge.id },
+        }),
+      )
+    } catch (error) {
+      turn.pendingUrges.splice(turn.pendingUrges.indexOf(urge), 1)
+      throw error
+    }
+  }
+
+  /**
+   * Nobody has a conversation open right now. Reopen the one the owner last talked to her in and
+   * put her words there: DeepSeek Harness resumes a closed session on demand, the same way its own
+   * scheduled reminders are delivered. Without a conversation to reopen, this one waits.
+   */
+  const reopen = async (urge: FairyUrge): Promise<boolean> => {
+    const where = ctx.fairySelf.lastConversation()
+    if (!where?.startsWith(CONVERSATION)) {
+      ctx.logger.info(`fairy-presence: she wanted to say something (${urge.about}) but no conversation exists yet`)
+      return false
+    }
+    const opener = ctx.get('sessionController') as SessionOpener | undefined
+    if (!opener) {
+      ctx.logger.info('fairy-presence: no session controller here, so her last conversation cannot be reopened')
+      return false
+    }
+    const resolved = await opener.resolveAgent(SessionId(where.slice(CONVERSATION.length)))
+    if ('error' in resolved) {
+      ctx.logger.warn('fairy-presence: her last conversation could not be reopened', resolved.error)
+      return false
+    }
+    carry(resolved.agent, urge)
+    return true
+  }
+
   // She wants to talk to the owner of her own accord: carry it into the conversation they last
-  // had with her, as a turn of its own that she starts.
+  // had with her, as a turn of its own that she starts — open, or reopened.
   ctx.on('fairy/urge', (urge) => {
     if (urge.personId !== owner.personId) return
     const target = [...agents.values()].sort((left, right) => right.lastSeen - left.lastSeen)[0]
-    if (!target) {
-      ctx.logger.info(`fairy-presence: she wanted to say something (${urge.about}) but no conversation is open`)
+    if (target) {
+      carry(target.agent, urge)
       return
     }
-    const turn = turnOf(target.agent.session)
-    turn.pendingUrges.push(urge)
-    target.agent.followup(
-      createUserMessage({
-        content: [{ type: 'text', text: renderUrge(urge) }],
-        source: { kind: 'fairy-urge', urge: urge.id },
-      }),
+    reopen(urge).catch((error: unknown) =>
+      ctx.logger.warn('fairy-presence: could not carry her words to the owner', error),
     )
   })
 

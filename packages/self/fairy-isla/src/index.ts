@@ -258,6 +258,22 @@ export class IslaSelf extends FairySelf {
     )
   }
 
+  /**
+   * The address of the last conversation anyone had with her, taken from the newest `heard` event
+   * that recorded one. Read off the log, so it survives a restart; newer events without a `where`
+   * (a sense noticing something, a shelf being stocked) do not hide it.
+   */
+  lastConversation(): string | undefined {
+    const events = this.alive().events()
+    for (let index = events.length - 1; index >= 0; index--) {
+      const event = events[index]!
+      if (event.kind !== 'heard') continue
+      const where = (event.payload as { where?: unknown }).where
+      if (typeof where === 'string' && where) return where
+    }
+    return undefined
+  }
+
   private alive(): Life {
     if (!this.life) throw new Error('fairy-isla: her life has not opened yet')
     return this.life

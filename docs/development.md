@@ -52,7 +52,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | 包 | 关键文件 | 负责什么 |
 |---|---|---|
 | `@fairy/core` | `src/index.ts` | `FairySelf` 抽象类和所有 `Fairy*` 类型、`fairy/*` 事件。Fairy 各包之间**只通过这里**通信 |
-| | `src/presence.ts` | 会话里的她：提示词段、`agent/pre-step` 里 `hear()`、`turn/end` 时 `speak()`、`fairy/urge` → 一轮她自己开始的对话、三个工具 |
+| | `src/presence.ts` | 会话里的她：提示词段、`agent/pre-step` 里 `hear()`、`turn/end` 时 `speak()`、`fairy/urge` → 一轮她自己开始的对话（没有开着的会话时用 `sessionController.resolveAgent()` 唤醒上次那个）、三个工具 |
 | | `src/render.ts` | 所有给模型看的文字：身份、聊天样子 `DEFAULT_CHAT_STYLE`、关系口气 `DEFAULT_BOND_TONES`、事实、回忆 |
 | `@fairy/isla` | `src/index.ts` | `IslaSelf`：打开生命、心跳、备份、语义索引，把 `FairySelf` 的每个方法翻译成 Isla 调用 |
 | | `src/genome.ts` | 她出生时的基因组。**她已经出生，改这里不影响她**，只影响新生命 |
@@ -143,7 +143,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 ## 现在的状态（2026-11-02）
 
 - 她 2026-11-01 出生，生命文件在 `.fairy-home/`。
-- 测试：Fairy 106 个，Isla 64 个，一年记忆评测通过，冒烟通过。
-- 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想（等主人填硅基流动 key）。
-- 没有：手机和别的设备、网页关着时找主人、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
+- 测试：Fairy 104 个，Isla 64 个，一年记忆评测通过，冒烟通过。
+- 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想（等主人填硅基流动 key）。
+- 没有：手机和别的设备、网页关着时把话推到手机上、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
 - 已知小问题：回复里没有标出用了哪些事实，所以对话里的引用不加强记忆，只有 `fairy_recall` 会。

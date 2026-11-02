@@ -95,6 +95,25 @@ test('what she hears and says goes into her life, and she can find it again', as
   assert.ok(kinds.some((event) => event.kind === 'recalled'))
 })
 
+test('she knows where her last conversation is kept, even after newer things happen', async () => {
+  const lifePath = join(dir, 'last.life.jsonl')
+  const ctx = new Context()
+  const fiber = ctx.plugin(IslaSelf, config(lifePath))
+  await fiber.await()
+  const owner = { personId: 'owner', name: '主人' }
+  assert.equal(ctx.fairySelf.lastConversation(), undefined, 'nobody has talked to her yet')
+
+  await ctx.fairySelf.hear(owner, '在吗', 'dsh-session:s-7')
+  assert.equal(ctx.fairySelf.lastConversation(), 'dsh-session:s-7')
+
+  // A sense noticing something, a shelf being stocked, a note: none of them carries a `where`,
+  // so none of them can hide the conversation she last had.
+  await ctx.fairySelf.perceive({ source: 'weather', what: '外面下着雨', detail: '雨' })
+  await ctx.fairySelf.hear(owner, '嗯')
+  assert.equal(ctx.fairySelf.lastConversation(), 'dsh-session:s-7')
+  await fiber.dispose()
+})
+
 test('her memory can be looked at without touching her life', async () => {
   const lifePath = join(dir, 'look.life.jsonl')
   const ctx = new Context()

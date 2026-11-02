@@ -33,6 +33,9 @@ class Watched extends FairySelf {
     this.stocked.push(item)
     return true
   }
+  lastConversation() {
+    return undefined
+  }
 }
 
 test('she looks out of the window when she wakes, and sees the real sky', async (t) => {

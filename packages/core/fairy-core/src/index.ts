@@ -165,6 +165,12 @@ export abstract class FairySelf extends Service {
   abstract stock(item: FairyShelfItem): Promise<boolean>
   /** Records what she said to someone of her own accord, against the urge it answers. */
   abstract speakUp(urge: FairyUrge, text: string, speaker: string): Promise<void>
+  /**
+   * Where the conversation she last had with anyone is kept, e.g. `dsh-session:<id>`; absent
+   * before the first. It is how words she wants to say reach an owner whose window is closed:
+   * the host reopens that conversation instead of dropping them.
+   */
+  abstract lastConversation(): string | undefined
 }
 
 /** Something for one of her shelves: an article, a commit. */
