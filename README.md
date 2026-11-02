@@ -48,6 +48,8 @@ pnpm fairy
 
 打开终端打印的地址（默认端口 3090）。第一次需要 DeepSeek API Key：在 Fairy 的 Web 设置 → 模型里添加，或者把 `.env.example` 复制成 `.env` 填上。
 
+她的页面（给手机、平板用）：`http://127.0.0.1:3090/fairy/app/`。第一次用它要一个配对码——宿主控制台打印的 `fairy-link: pairing code 123456`。
+
 **第一次启动就是她的出生**，基因组会永久写进生命日志。启动之前，先看一遍、改好 [`packages/self/fairy-isla/src/genome.ts`](packages/self/fairy-isla/src/genome.ts)。
 
 其他命令：

@@ -82,6 +82,10 @@
       config:
         devicesPath: !!js process.env.FAIRY_DEVICES_PATH
         sessionCwd: !!js process.env.FAIRY_SESSION_CWD
+    # Her own page at /fairy/app/: pair a device, talk to her. No framework, no build step for the
+    # client; the protocol module it imports is served from the same package the host runs.
+    - id: fairy-app
+      name: '@fairy/app'
 
 # ── the default agent is Fairy ─────────────────────────────────────────────────
 - id: agent-preset-registry

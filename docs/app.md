@@ -16,7 +16,11 @@
 
 ## 客户端：PWA 优先
 
-形态：一个**宿主自己发的静态页面**，路由在 `/fairy/app/`（`ctx.webServer.register` 的 prefix 路由），单页、无框架、原生 DOM + `@fairy/protocol` + `socket.ts` 的客户端。
+形态：一个**宿主自己发的静态页面**，路由在 `/fairy/app/`（`ctx.webServer.register` 的 prefix 路由），单页、无框架、原生 DOM + 宿主发出来的 `protocol.js`。
+
+代码放在 `packages/app/fairy-app`，不是 `apps/fairy-app`：页面和协议模块必须跟着一个**包**走，profile 只链接 `@fairy/bundle`，`apps/` 下的东西在运行时找不到。`web/` 里是页面和脚本，`src/index.ts` 只负责发这三个文件。
+
+客户端**没有构建步骤**：`web/app.js` 是手写的 ESM，唯一的共享代码是宿主在 `/fairy/app/protocol.js` 发出来的 `@fairy/protocol` 编译产物（它没有 import，浏览器能直接跑）。加一个 bundler 就多一条会坏的构建链，不值当。
 
 理由：
 
@@ -25,13 +29,15 @@
 3. **协议已经现成**。`@fairy/protocol` 里的帧和校验是给任意客户端用的，PWA 只是又一个客户端。
 4. **可替换**。以后真要做原生（Tauri / Flutter），协议和宿主一行不用改，换的只是那层壳。
 
-不做的：不引 React/Vue 之类框架（一个聊天框加一个确认卡片不值当），不做离线缓存她的生活（她的数据只存在宿主），不做多用户。
+不做的：不引 React/Vue 之类框架，不做离线缓存她的生活（她的数据只存在宿主），不做多用户。
+
+页面和 `/fairy/link/pair` 都不经过 DSH 的网页 token，它们自己用设备令牌认证；和 DSH 的路由一样只监听本机地址，跨端靠 Tailscale（见下）。
 
 ### 里程碑
 
 | 步骤 | 做什么 | 验收 |
 |---|---|---|
-| M1 | 静态页面 + 配对页 + 聊天（`say` → `reply.done`） | 手机经 Tailscale 打开，配对后能和她说话，重开页面仍然记得令牌 |
+| M1 ✅ | 静态页面 + 配对 + 聊天（`say` → `reply.done`） | 2026-11-02 在真宿主上验过：浏览器里配对 → 说话 → 她回；刷新页面令牌还在、自动重连；她的话进了生命 |
 | M2 | 确认卡片（`confirm` / `answer`）+ 她的状态（`status`） | 让她删一个临时文件，卡片在手机上弹出，点"不允许"她如实回报 |
 | M3 | 会话切换（`sessions`）+ 她主动找来（`urge`）+ 断线重连补上漏掉的回复 | 关掉页面，她主动说话后重开能看到；断网 30 秒后恢复不丢消息 |
 | M4 | 系统推送（可选，另行决定） | —— |

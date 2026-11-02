@@ -70,6 +70,8 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | | `src/socket.ts` | 手写的 WebSocket：握手、文本帧、分片、ping/close。服务端和 CLI 客户端共用 |
 | | `src/index.ts` | `FairyLink` service：`/fairy/link/pair` 配对、`/fairy/link/v1` 通道（`hello` / `say` / `status` / `recall` / `sessions` / `answer`）、把 `reply.done` 推回设备、`fairy/urge` 转推送、`user-questions/request` 转 `confirm` |
 | `fairy-link-cli` | `apps/fairy-link-cli/src/cli.ts` | 终端设备：`pair` / `say` / `status` / `recall`，也是阶段 1 的验收客户端 |
+| `@fairy/app` | `src/index.ts` | 在 `/fairy/app/` 发她的页面：`web/index.html`、`web/app.js`，以及从 `@fairy/protocol` 读出来的 `protocol.js`。只发这三个文件，按名字 |
+| | `web/app.js` | 页面本身：配对、连接、收发。手写 ESM，没有构建步骤 |
 | `@fairy/bundle` | `cordis.patch.yml` | 把以上装进 DSH |
 | `scripts/fairy.mjs` | | 启动脚本：唯一设置 `DSH_HOME` 的地方；读 `.env`；`setup` / `web` / `smoke` / `dump` / `memory` |
 
@@ -151,7 +153,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 ## 现在的状态（2026-11-02）
 
 - 她 2026-11-01 出生，生命文件在 `.fairy-home/`。
-- 测试：Fairy 141 个，Isla 64 个，一年记忆评测通过，冒烟通过。
-- 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想、通道（配对 + WebSocket + 终端客户端，只监听本机）。
+- 测试：Fairy 146 个，Isla 64 个，一年记忆评测通过，冒烟通过。
+- 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想、通道（配对 + WebSocket + 终端客户端）、她自己的页面 `/fairy/app/`（M1：配对 + 聊天）。
 - 没有：手机和别的设备上的 App、网页和 App 都关着时把话推到手机上、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
 - 已知小问题：回复里没有标出用了哪些事实，所以对话里的引用不加强记忆，只有 `fairy_recall` 会。

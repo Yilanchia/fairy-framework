@@ -31,7 +31,7 @@
 | `@fairy/link` | `packages/link/fairy-link` | 宿主插件：配对、设备令牌、通道协议、把消息接到 DSH 会话、推送她想说的话、转发确认 |
 | `@fairy/protocol` | `packages/link/fairy-protocol` | 通道协议的类型和校验（App、节点、宿主共用），纯 TypeScript，不依赖 DSH |
 | `fairy-node` | `apps/fairy-node` | 跑在每台设备上的小程序：连宿主、报能力、执行宿主派来的动作 |
-| Fairy App | `apps/fairy-app` | 客户端，框架待定（见“要主人定的”） |
+| `@fairy/app` | `packages/app/fairy-app` | 她自己的页面：`/fairy/app/`，配对 + 聊天（M1 已通）。静态资源必须跟包走，所以不在 `apps/` 下 |
 
 `pnpm-workspace.yaml` 要加上 `apps/*`。
 

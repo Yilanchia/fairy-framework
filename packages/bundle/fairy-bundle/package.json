@@ -16,6 +16,7 @@
     }
   },
   "dependencies": {
+    "@fairy/app": "workspace:*",
     "@fairy/core": "workspace:*",
     "@fairy/guard": "workspace:*",
     "@fairy/hands": "workspace:*",
