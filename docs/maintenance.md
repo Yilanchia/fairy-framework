@@ -50,6 +50,8 @@ ls /proc/$PID/root/www        # 不存在
 cd /home/fairy/fairy-framework
 node scripts/fairy.mjs doctor        # 她还好吗
 node scripts/fairy.mjs pair          # 当前的配对码 + 她的页面地址
+node scripts/fairy.mjs devices       # 哪些设备配过，什么时候来过
+node scripts/fairy.mjs revoke <id>   # 作废一台设备，立刻生效（不用重启她）
 node scripts/fairy.mjs memory 花生    # 她记得什么（只读）
 journalctl -u fairy -n 50            # 她的日志
 systemctl status fairy               # 她的进程
