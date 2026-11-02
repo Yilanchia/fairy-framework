@@ -55,7 +55,24 @@ journalctl -u fairy -n 50            # 她的日志
 systemctl status fairy               # 她的进程
 ```
 
-配对码不是只在启动时出现一次：它每 5 分钟换一个，最新的写在 `.fairy-home/pairing-code`（0600，只有 `fairy` 能读），`node scripts/fairy.mjs pair` 打的就是它。配对成功后会立刻换成新的，所以给下一台设备配对不用等、也不用重启她。
+配对码不是只在启动时出现一次：默认每 5 分钟换一个，最新的写在 `.fairy-home/pairing-code`（0600，只有 `fairy` 能读），`node scripts/fairy.mjs pair` 打的就是它。配对成功后会立刻换成新的，所以给下一台设备配对不用等、也不用重启她。
+
+**现在配的是固定码**（`.env` 的 `FAIRY_PAIR_CODE`，见下）。想换就改 `.env` 里那一行，`systemctl restart fairy`。长度不足 12 位会被拒绝启动——固定码永久可猜，短了等于没有锁。默认的轮换模式还在：把那行删掉重启，就回到每 5 分钟一换。
+
+### 她那台机器的 `.env`
+
+```bash
+cd /home/fairy/fairy-framework && cp .env .env.bak
+```
+
+四个键：`DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`FAIRY_PUBLIC_URL`（`pnpm pair` 打印的地址）、`FAIRY_PAIR_CODE`（固定配对码）。
+
+**打包上传时一定排除 `.env`**——它带着这台机器的地址和配对码，被覆盖过一次，害得配对码没生效。
+
+### 配对码相关的两个坑（都踩过）
+
+1. `.env` 末尾没有换行时追加一行，会把两个键挤成一条（`SILICONFLOW_API_KEY=...FAIRY_PUBLIC_URL=...`），硅基流动的 key 直接失效。改 `.env` 一律用脚本保证换行。
+2. 上传的 tarball 里如果带着 `.env`，解包会覆盖服务器上的配置。打包命令里加 `--exclude='fairy-framework/.env'`。
 
 ### 更新服务器上的代码
 

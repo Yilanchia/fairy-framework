@@ -82,6 +82,8 @@
       config:
         devicesPath: !!js process.env.FAIRY_DEVICES_PATH
         sessionCwd: !!js process.env.FAIRY_SESSION_CWD
+        # A fixed code the owner keeps, when one is configured; otherwise it rotates every 5 min.
+        pairCode: !!js process.env.FAIRY_PAIR_CODE
     # Her own page at /fairy/app/: pair a device, talk to her. No framework, no build step for the
     # client; the protocol module it imports is served from the same package the host runs.
     - id: fairy-app

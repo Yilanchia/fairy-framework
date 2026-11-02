@@ -53,6 +53,15 @@ export interface Config {
   confirmTimeoutMs: number
   /** How long a pairing code lives before a fresh one replaces it. */
   pairCodeMinutes: number
+  /**
+   * A fixed pairing code the owner keeps. Absent means a rotating six-digit code. A fixed code is
+   * only acceptable because it is long, and because repeated failures pause pairing entirely.
+   */
+  pairCode?: string
+  /** Wrong codes, from anywhere, before pairing pauses. */
+  pairLockoutFailures: number
+  /** How long that pause lasts. */
+  pairLockoutMinutes: number
 }
 
 export const Config: z<Config> = z.object({
@@ -63,6 +72,9 @@ export const Config: z<Config> = z.object({
   ownerName: z.string().default('主人'),
   confirmTimeoutMs: z.natural().min(1000).default(300_000),
   pairCodeMinutes: z.natural().min(1).default(5),
+  pairCode: z.string().description('A fixed pairing code (at least 12 characters) instead of a rotating one.'),
+  pairLockoutFailures: z.natural().min(1).default(20),
+  pairLockoutMinutes: z.natural().min(1).default(15),
 })
 
 /** One connected device. Authenticated only after `hello`. */
@@ -127,12 +139,14 @@ export class FairyLink extends Service {
   static readonly inject = ['fairySelf', 'webServer']
   static Config = Config
 
-  private readonly codes = new PairingCodes()
+  private readonly codes: PairingCodes
   private readonly conns = new Set<Conn>()
   private readonly bindings = new Map<string, Set<Conn>>()
   private readonly pending = new Map<string, Pending>()
   /** Wrong codes per address, so guessing six digits is not a free loop. */
   private readonly failures = new Map<string, { count: number; until: number }>()
+  /** Wrong codes from anywhere, so a fixed long code cannot be hammered from many addresses. */
+  private readonly wrong = { count: 0, until: 0 }
   private store!: DeviceStore
 
   constructor(
@@ -140,16 +154,21 @@ export class FairyLink extends Service {
     private readonly config: Config,
   ) {
     super(ctx, 'fairyLink')
+    if (config.pairCode !== undefined && config.pairCode.length < 12) {
+      throw new Error('fairy-link: pairCode must be at least 12 characters; a short fixed code is guessable forever')
+    }
+    this.codes = new PairingCodes(config.pairCodeMinutes * 60_000, Date.now, config.pairCode)
   }
 
   async [Service.init](): Promise<void> {
     this.store = DeviceStore.open(this.config.devicesPath)
     this.rotate()
-    // A code that only appears at boot is useless on a host nobody reboots: it expires before the
-    // owner gets to the console. It rotates instead, and the latest is left beside the devices.
-    const rotate = setInterval(() => this.rotate(), this.config.pairCodeMinutes * 60_000)
-    rotate.unref?.()
-    this.ctx.effect(() => () => clearInterval(rotate), 'fairy-link.code')
+    // A rotating code only works if it keeps coming; a fixed one is written once and left alone.
+    if (!this.codes.isFixed) {
+      const rotate = setInterval(() => this.rotate(), this.config.pairCodeMinutes * 60_000)
+      rotate.unref?.()
+      this.ctx.effect(() => () => clearInterval(rotate), 'fairy-link.code')
+    }
 
     this.ctx.effect(
       () =>
@@ -214,9 +233,8 @@ export class FairyLink extends Service {
    */
   rotate(): { code: string; expiresAt: number } {
     const code = this.codes.mint()
-    console.log(
-      `fairy-link: pairing code ${code.code}, valid until ${new Date(code.expiresAt).toISOString()} — POST it with a device name to /fairy/link/pair`,
-    )
+    const when = code.expiresAt === 0 ? 'no expiry: this is a fixed code' : `valid until ${new Date(code.expiresAt).toISOString()}`
+    console.log(`fairy-link: pairing code ${code.code} — ${when}`)
     try {
       writeFileSync(this.codePath(), `${code.code} ${code.expiresAt}\n`, { encoding: 'utf8', mode: 0o600 })
     } catch (error) {
@@ -268,6 +286,7 @@ export class FairyLink extends Service {
   private async pair(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
     const address = req.socket.remoteAddress ?? 'unknown'
+    if (this.wrong.until > Date.now()) return json(res, 429, { error: 'pairing is paused after too many wrong codes; try again later' })
     const failure = this.failures.get(address)
     if (failure && failure.until > Date.now()) return json(res, 429, { error: 'too many wrong codes; wait a few minutes' })
 
@@ -285,14 +304,23 @@ export class FairyLink extends Service {
       const next = { count: (failure?.count ?? 0) + 1, until: 0 }
       if (next.count >= 5) next.until = Date.now() + 5 * 60_000
       this.failures.set(address, next)
+      this.wrong.count += 1
+      if (this.wrong.count >= this.config.pairLockoutFailures) {
+        this.wrong.count = 0
+        this.wrong.until = Date.now() + this.config.pairLockoutMinutes * 60_000
+        this.ctx.logger.warn(
+          `fairy-link: ${this.config.pairLockoutFailures} wrong pairing codes; pairing paused for ${this.config.pairLockoutMinutes} minutes`,
+        )
+      }
       this.ctx.logger.warn(`fairy-link: a wrong pairing code from ${address} (${next.count} in a row)`)
       return json(res, 403, { error: 'that code is not valid any more' })
     }
     this.failures.delete(address)
+    this.wrong.count = 0
     const { device, token } = this.store.add(deviceName, kind)
     this.ctx.logger.info(`fairy-link: paired "${device.name}" (${device.kind})`)
-    // The code is spent; hand out the next one straight away so the next device does not wait.
-    this.rotate()
+    // A rotating code is spent, so hand out the next one; a fixed one is simply kept.
+    if (!this.codes.isFixed) this.rotate()
     return json(res, 200, { protocol: PROTOCOL_VERSION, device: publicDevice(device), token })
   }
 

@@ -90,7 +90,7 @@ class FakeSender implements SessionSender {
   }
 }
 
-async function host(options: { conversation?: string | undefined } = {}) {
+async function host(options: { conversation?: string | undefined } = {}, link: Partial<Record<string, unknown>> = {}) {
   const ctx = new Context()
   await ctx.plugin(StubSelf).await()
   const self = ctx.fairySelf as StubSelf
@@ -108,6 +108,9 @@ async function host(options: { conversation?: string | undefined } = {}) {
     ownerName: '主人',
     confirmTimeoutMs: 2000,
     pairCodeMinutes: 5,
+    pairLockoutFailures: 20,
+    pairLockoutMinutes: 15,
+    ...link,
   })
   await fiber.await()
   fibers.push(fiber)
@@ -160,6 +163,32 @@ test('the live code is left where the owner can read it, and a new one replaces 
   const { token } = await pair(base, rotated.code)
   assert.ok(token)
   assert.notEqual(ctx.fairyLink.pairingCode()?.code, rotated.code)
+})
+
+test('a fixed code is kept, not spent, and pairing twice needs no new one', async () => {
+  const { ctx, base } = await host({}, { pairCode: 'fairy-owner-2026' })
+  const file = join(dir, 'pairing-code')
+  assert.equal(readFileSync(file, 'utf8').trim(), 'fairy-owner-2026 0', 'expiry 0 means "does not change"')
+  const first = await pair(base, 'fairy-owner-2026', '手机')
+  const second = await pair(base, 'fairy-owner-2026', '平板')
+  assert.ok(first.token && second.token)
+  assert.equal(ctx.fairyLink.pairingCode()?.code, 'fairy-owner-2026')
+  assert.equal(ctx.fairyLink.pairingCode()?.expiresAt, 0, 'a fixed code never expires')
+})
+
+test('a short fixed code is refused at startup, because it would be guessable forever', async () => {
+  await assert.rejects(host({}, { pairCode: '123456' }), /at least 12 characters/)
+})
+
+test('repeated wrong codes from anywhere pause pairing, even for the right code', async () => {
+  const { ctx, base } = await host({}, { pairCode: 'fairy-owner-2026', pairLockoutFailures: 2, pairLockoutMinutes: 1 })
+  const wrong = await fetch(`${base}/fairy/link/pair`, { method: 'POST', body: JSON.stringify({ code: 'nope', name: 'x' }) })
+  assert.equal(wrong.status, 403)
+  const wrongAgain = await fetch(`${base}/fairy/link/pair`, { method: 'POST', body: JSON.stringify({ code: 'nope2', name: 'x' }) })
+  assert.equal(wrongAgain.status, 403)
+  const paused = await fetch(`${base}/fairy/link/pair`, { method: 'POST', body: JSON.stringify({ code: 'fairy-owner-2026', name: 'x' }) })
+  assert.equal(paused.status, 429, 'the lockout applies before the code is even looked at')
+  assert.equal(ctx.fairyLink.devices().length, 0)
 })
 
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
