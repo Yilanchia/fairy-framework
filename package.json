@@ -17,7 +17,9 @@
     "smoke": "tsc -b && node scripts/fairy.mjs smoke",
     "memory": "tsc -b && node scripts/fairy.mjs memory",
     "doctor": "tsc -b && node scripts/fairy.mjs doctor",
-    "pair": "node scripts/fairy.mjs pair"
+    "pair": "node scripts/fairy.mjs pair",
+    "devices": "node scripts/fairy.mjs devices",
+    "revoke": "node scripts/fairy.mjs revoke"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.5",

@@ -184,6 +184,25 @@ try {
       console.log(`pairing code ${code}, valid for another ${minutes} minute(s)`)
     }
     console.log(`open ${publicUrl}/fairy/app/ and type it in`)
+  } else if (command === 'devices') {
+    const { DeviceStore } = await import('../packages/link/fairy-link/dist/index.js')
+    const store = DeviceStore.open(join(at.home, 'devices.json'))
+    const rows = store.list()
+    if (rows.length === 0) {
+      console.log('no devices paired yet')
+    }
+    for (const device of rows) {
+      const seen = device.lastSeenAt ? new Date(device.lastSeenAt).toISOString().slice(0, 16).replace('T', ' ') : '-'
+      console.log(`${device.id}  ${device.kind.padEnd(4)}  ${device.name}  (paired ${new Date(device.createdAt).toISOString().slice(0, 10)}, last seen ${seen})`)
+    }
+    if (rows.length > 0) console.log('\n`node scripts/fairy.mjs revoke <id>` forgets one; she stops honouring it at once.')
+  } else if (command === 'revoke') {
+    const id = process.argv[3]
+    if (!id) throw new Error('which device? `node scripts/fairy.mjs devices` lists them')
+    const { DeviceStore } = await import('../packages/link/fairy-link/dist/index.js')
+    const store = DeviceStore.open(join(at.home, 'devices.json'))
+    if (!store.revoke(id)) throw new Error(`no paired device with id ${id}`)
+    console.log(`revoked ${id}: that token stops working now, without restarting her`)
   } else if (command === 'doctor') {
     // Read-only: no lock, no writes, safe while she is running. Answers "is she okay" in one look.
     const { formatHealth, healthReport, readLife } = await import('../packages/self/fairy-isla/dist/index.js')

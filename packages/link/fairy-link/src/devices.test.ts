@@ -54,6 +54,20 @@ test('a device seen again is marked, but not rewritten on every frame', () => {
   assert.ok(JSON.parse(readFileSync(path, 'utf8'))[0].lastSeenAt >= 1000 + 120_000)
 })
 
+test('revoking from another process takes effect in a running one, without a restart', () => {
+  const path = join(dir, 'live-revoke.json')
+  const running = DeviceStore.open(path)
+  const { device, token } = running.add('手机', 'app', 1000)
+  assert.equal(running.authenticate(token)?.id, device.id)
+
+  // A second copy of the store, as a CLI or the panel would have, revokes the device.
+  const other = DeviceStore.open(path)
+  assert.equal(other.revoke(device.id), true)
+
+  assert.equal(running.authenticate(token), undefined, 'the running host notices the file changed')
+  assert.ok(!running.list().some((row) => row.id === device.id))
+})
+
 test('a devices file that is not a devices file is refused loudly, not read as empty', () => {
   const path = join(dir, 'broken.json')
   writeFileSync(path, '{"not":"a list"}', 'utf8')

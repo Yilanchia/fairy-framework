@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { DeviceKind } from '@fairy/protocol'
 
@@ -43,9 +43,20 @@ export class DeviceStore {
     private devices: Device[],
   ) {}
 
+  /** When this copy of the file was read; -1 means "not there". */
+  private stamp = -1
+
   /** Reads the file, or starts empty when there is none. A file that is not devices is an error. */
   static open(path: string): DeviceStore {
-    if (!existsSync(path)) return new DeviceStore(path, [])
+    const loaded = DeviceStore.read(path)
+    const store = new DeviceStore(path, loaded.devices)
+    store.stamp = loaded.stamp
+    return store
+  }
+
+  private static read(path: string): { devices: Device[]; stamp: number } {
+    if (!existsSync(path)) return { devices: [], stamp: -1 }
+    const stamp = statSync(path).mtimeMs
     const text = readFileSync(path, 'utf8')
     let rows: unknown
     try {
@@ -70,7 +81,7 @@ export class DeviceStore {
         tokenHash: device.tokenHash,
       })
     }
-    return new DeviceStore(path, devices)
+    return { devices, stamp }
   }
 
   /** Pairs one device: mints its token, keeps only the hash, and returns both once. */
@@ -91,12 +102,14 @@ export class DeviceStore {
 
   /** The device this token belongs to, or undefined. Says nothing about which half was wrong. */
   authenticate(token: string): Device | undefined {
+    this.refresh()
     const wanted = hash(token)
     return this.devices.find((device) => same(device.tokenHash, wanted))
   }
 
   /** Notes that a device was just seen; the file is written at most once a minute per device. */
   touch(id: string, now = Date.now()): void {
+    this.refresh()
     const device = this.devices.find((row) => row.id === id)
     if (!device) return
     if (now - device.lastSeenAt < 60_000) return
@@ -105,8 +118,9 @@ export class DeviceStore {
     this.save()
   }
 
-  /** Forgets a device: its token stops working immediately. */
+  /** Forgets a device: its token stops working immediately, even while she is running. */
   revoke(id: string): boolean {
+    this.refresh()
     const before = this.devices.length
     this.devices = this.devices.filter((device) => device.id !== id)
     if (this.devices.length === before) return false
@@ -116,7 +130,26 @@ export class DeviceStore {
 
   /** Every paired device, oldest first. */
   list(): readonly Device[] {
+    this.refresh()
     return [...this.devices].sort((left, right) => left.createdAt - right.createdAt)
+  }
+
+  /**
+   * Re-reads the file when another process changed it. The running host loads devices once at
+   * startup; without this, revoking with a CLI would do nothing until a restart, which is exactly
+   * the wrong behaviour for "this device is gone now".
+   */
+  private refresh(): void {
+    let stamp = -1
+    try {
+      stamp = statSync(this.path).mtimeMs
+    } catch {
+      stamp = -1
+    }
+    if (stamp === this.stamp) return
+    const loaded = DeviceStore.read(this.path)
+    this.devices = loaded.devices
+    this.stamp = loaded.stamp
   }
 
   /** Written whole, then renamed over the old file, so a crash leaves one complete file. */
@@ -125,5 +158,6 @@ export class DeviceStore {
     const temporary = `${this.path}.tmp`
     writeFileSync(temporary, `${JSON.stringify(this.devices, null, 2)}\n`, 'utf8')
     renameSync(temporary, this.path)
+    this.stamp = statSync(this.path).mtimeMs
   }
 }
