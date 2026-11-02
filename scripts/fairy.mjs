@@ -9,7 +9,8 @@
 //   node scripts/fairy.mjs smoke   boot once in a throwaway home and check she comes alive
 //   node scripts/fairy.mjs memory [query]   what she keeps, and what a search finds (read-only)
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -166,6 +167,75 @@ try {
     const { formatInspection, inspect, readLife } = await import('../packages/self/fairy-isla/dist/index.js')
     const query = process.argv.slice(3).join(' ').trim() || undefined
     console.log(formatInspection(inspect(readLife(at.lifePath), query), query))
+  } else if (command === 'doctor') {
+    // Read-only: no lock, no writes, safe while she is running. Answers "is she okay" in one look.
+    const { formatHealth, healthReport, readLife } = await import('../packages/self/fairy-isla/dist/index.js')
+    let events
+    let tornTail = false
+    if (existsSync(at.lifePath)) {
+      const lines = readFileSync(at.lifePath, 'utf8').split('\n').filter((line) => line.trim())
+      const parsed = readLife(at.lifePath)
+      events = parsed.length
+      tornTail = parsed.length < lines.length
+    }
+    const lockPath = `${at.lifePath}.lock`
+    const holder = existsSync(lockPath) ? Number(readFileSync(lockPath, 'utf8').trim()) : undefined
+    let held = false
+    if (holder && Number.isInteger(holder)) {
+      try {
+        process.kill(holder, 0)
+        held = true
+      } catch (error) {
+        held = error.code === 'EPERM'
+      }
+    }
+    const backupDir = join(at.home, 'backups')
+    let newest = undefined
+    if (existsSync(backupDir)) {
+      for (const file of readdirSync(backupDir)) {
+        const at2 = statSync(join(backupDir, file)).mtimeMs
+        if (newest === undefined || at2 > newest) newest = at2
+      }
+    }
+    const devicesPath = join(at.home, 'devices.json')
+    let devices = 0
+    if (existsSync(devicesPath)) {
+      try {
+        devices = JSON.parse(readFileSync(devicesPath, 'utf8')).length
+      } catch {
+        devices = 0
+      }
+    }
+    const port = Number(process.env.FAIRY_PORT ?? '3090')
+    const portOpen = await new Promise((resolvePromise) => {
+      const socket = connect({ host: '127.0.0.1', port })
+      socket.setTimeout(1500)
+      socket.once('connect', () => {
+        socket.destroy()
+        resolvePromise(true)
+      })
+      socket.once('timeout', () => {
+        socket.destroy()
+        resolvePromise(false)
+      })
+      socket.once('error', () => resolvePromise(false))
+    })
+    console.log(
+      formatHealth(
+        healthReport({
+          lifePath: at.lifePath,
+          events,
+          tornTail,
+          lockHolder: holder,
+          lockHeld: held,
+          backupAgeMs: newest === undefined ? undefined : Date.now() - newest,
+          vectors: existsSync(join(at.home, 'memory-vectors.jsonl')),
+          devices,
+          port,
+          portOpen,
+        }),
+      ),
+    )
   } else {
     throw new Error(`unknown command ${command}`)
   }

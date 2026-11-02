@@ -119,6 +119,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 | 冒烟（真实启动一次 DSH，临时 home） | `node scripts/fairy.mjs smoke`，**必须在仓库根目录** |
 | 启动她 | `pnpm fairy`，不想弹浏览器加 `-- --no-open` |
 | 看她记得什么 | `pnpm memory [词]`，只读 |
+| 看她还好吗 | `pnpm doctor`，只读：生命、写入者、备份、语义回想、设备、网页 |
 | 看 DSH 组合出的插件树 | `pnpm dump` |
 | 编译测试 Isla | `cd D:\isla\packages\life && npx tsc -p tsconfig.json && node --test dist/*.test.js` |
 | Isla 一年记忆评测 | `cd D:\isla\evals && npx tsc -p tsconfig.json && node --test dist/memory.eval.test.js`（约 30 秒） |
@@ -150,7 +151,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 ## 现在的状态（2026-11-02）
 
 - 她 2026-11-01 出生，生命文件在 `.fairy-home/`。
-- 测试：Fairy 135 个，Isla 64 个，一年记忆评测通过，冒烟通过。
+- 测试：Fairy 141 个，Isla 64 个，一年记忆评测通过，冒烟通过。
 - 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想、通道（配对 + WebSocket + 终端客户端，只监听本机）。
 - 没有：手机和别的设备上的 App、网页和 App 都关着时把话推到手机上、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
 - 已知小问题：回复里没有标出用了哪些事实，所以对话里的引用不加强记忆，只有 `fairy_recall` 会。

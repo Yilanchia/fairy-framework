@@ -26,6 +26,7 @@ import { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 export { FAIRY_GENOME, FAIRY_GENOME_INPUT } from './genome.js'
 export { toFacts, toIdentity, toMemories, toStatus } from './translate.js'
 export { formatInspection, inspect, readLife, type Inspection } from './inspect.js'
+export { formatHealth, healthReport, type HealthInput, type HealthLine, type HealthReport } from './health.js'
 export { meaningOf, SemanticIndex, SiliconFlowEmbedder, type Embedder } from './semantic.js'
 
 export interface Config {

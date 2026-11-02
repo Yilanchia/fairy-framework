@@ -5,7 +5,8 @@
 她 2026-11-01 出生。她在对话之间继续过日子：看新闻、翻主人的项目、看窗外成都的天、写笔记、睡觉；记得和主人说过的话，会慢慢忘掉不常想起的，会记下主人交代的事；想找主人时会主动开口；和主人越熟口气越放松；删除、对外发送、花钱之前一定先问主人。
 
 - 开发文档：[docs/development.md](docs/development.md)（代码怎么组织、怎么跑、怎么测）
-- 跨端计划：[docs/plan-app.md](docs/plan-app.md)（App、服务器、设备节点）
+- 跨端计划：[docs/plan-app.md](docs/plan-app.md)（App、服务器、设备节点）与 [docs/app.md](docs/app.md)（已定的 App 与通信方案）
+- 怎么长期养着她：[docs/maintenance.md](docs/maintenance.md)（每周看一眼、升级、恢复、密钥）
 - 设计取舍：[docs/decisions.md](docs/decisions.md)；记忆系统：[docs/memory.md](docs/memory.md)
 - 接手的编码智能体先读 [AGENTS.md](AGENTS.md)
 

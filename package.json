@@ -15,7 +15,8 @@
     "dump": "node scripts/fairy.mjs dump",
     "fairy": "tsc -b && node scripts/fairy.mjs web",
     "smoke": "tsc -b && node scripts/fairy.mjs smoke",
-    "memory": "tsc -b && node scripts/fairy.mjs memory"
+    "memory": "tsc -b && node scripts/fairy.mjs memory",
+    "doctor": "tsc -b && node scripts/fairy.mjs doctor"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.5",
