@@ -138,18 +138,44 @@ async function subscribe() {
 }
 
 async function askNotification() {
-  if (!('Notification' in window)) return line('note', '这个浏览器不支持通知。')
+  if (!('Notification' in window)) return line('note', '这个浏览器不支持通知。iPhone 请先把本页「添加到主屏幕」，再从主屏幕打开。')
   const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return line('note', '没给通知权限，页面关着的时候收不到她。')
+  if (permission !== 'granted') {
+    return line('note', '没给通知权限。如果之前点过"不允许"，去浏览器的网站设置里把这一个站点改回允许。')
+  }
   await subscribe()
   line('note', '通知开了。页面关着的时候，她找你也会响。')
 }
 
-/** The header shows a way in when permission has not been granted yet. */
+/**
+ * The entry point to notifications, shown whenever the host can push. It used to appear only when
+ * the browser had not been asked yet — so a phone that had once answered "no", or an iPhone Safari
+ * tab that cannot push at all, showed nothing and left the owner hunting for a button.
+ */
 async function offerNotifications() {
-  if (!state.pushKey || !('Notification' in window)) return
-  if (Notification.permission === 'granted') return subscribe()
-  if (Notification.permission === 'default') $('notify').classList.remove('hidden')
+  const button = $('notify')
+  if (!state.pushKey) {
+    button.classList.add('hidden')
+    return
+  }
+  if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
+    // iOS Safari only allows this for a page added to the home screen; say so instead of hiding.
+    button.textContent = '通知不可用'
+    button.classList.remove('hidden')
+    button.disabled = true
+    button.title = '这个浏览器不能收推送。iPhone 请先把本页「添加到主屏幕」，再从主屏幕打开。'
+    return
+  }
+  if (Notification.permission === 'granted') {
+    button.textContent = '通知已开'
+    button.classList.remove('hidden')
+    await subscribe()
+    button.classList.add('hidden')
+    return
+  }
+  button.textContent = Notification.permission === 'denied' ? '通知被禁用了' : '开启通知'
+  button.classList.remove('hidden')
+  button.disabled = false
 }
 
 /* ── the socket ──────────────────────────────────────────────────────────────────────────── */
