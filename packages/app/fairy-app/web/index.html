@@ -85,6 +85,61 @@
         background: rgba(18,26,35,0.8);
       }
       #state.bad { color: var(--bad); border-color: rgba(255,92,122,0.5); }
+      #doing {
+        font: 400 11px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.08em;
+        color: var(--cyan-dim);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 42vw;
+      }
+      #notify {
+        font: 600 11px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.12em;
+        padding: 8px 10px;
+        background: transparent;
+        color: var(--cyan);
+        border: 1px solid var(--cyan-dim);
+        clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+        cursor: pointer;
+      }
+      /* her question, waiting for a decision: a panel, not a bubble */
+      .card {
+        align-self: flex-start;
+        max-width: 92%;
+        border: 1px solid var(--cyan-dim);
+        border-left-width: 3px;
+        background: linear-gradient(135deg, rgba(18,26,35,0.96), rgba(10,15,21,0.96));
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+      }
+      .card-head {
+        font: 400 10px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.2em;
+        color: var(--cyan-dim);
+      }
+      .card-question { font-size: 14px; }
+      .card-detail {
+        margin: 0;
+        font: 400 12px/1.5 "Consolas", ui-monospace, monospace;
+        color: var(--dim);
+        background: rgba(4,8,12,0.7);
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 30vh;
+        overflow: auto;
+      }
+      .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .card-actions button { padding: 9px 14px; font-size: 13px; }
+      .card-actions button.chosen { outline: 2px solid var(--cyan); }
+      .card-actions button:disabled { opacity: 0.45; }
+      .card-said { font: 400 11px/1.4 "Consolas", ui-monospace, monospace; color: var(--cyan-dim); }
 
       main {
         position: relative;
@@ -205,6 +260,8 @@
   <body>
     <header>
       <span class="mark"><b>FAIRY</b><i>BUTLER · ONLINE</i></span>
+      <span id="doing"></span>
+      <button id="notify" class="hidden">开启通知</button>
       <span id="state">未连接</span>
     </header>
 

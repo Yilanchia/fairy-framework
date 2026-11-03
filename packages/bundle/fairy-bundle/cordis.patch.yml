@@ -84,6 +84,12 @@
         sessionCwd: !!js process.env.FAIRY_SESSION_CWD
         # A fixed code the owner keeps, when one is configured; otherwise it rotates every 5 min.
         pairCode: !!js process.env.FAIRY_PAIR_CODE
+        # Web Push, so her words reach a page nobody is looking at. The keys are generated once
+        # per deployment (web-push generate-vapid-keys) and kept in .env.
+        vapid:
+          publicKey: !!js process.env.FAIRY_VAPID_PUBLIC ?? ''
+          privateKey: !!js process.env.FAIRY_VAPID_PRIVATE ?? ''
+          subject: !!js process.env.FAIRY_VAPID_SUBJECT ?? ''
     # Her own page at /fairy/app/: pair a device, talk to her. No framework, no build step for the
     # client; the protocol module it imports is served from the same package the host runs.
     - id: fairy-app

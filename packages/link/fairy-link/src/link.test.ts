@@ -260,6 +260,39 @@ test('a text file reaches her as a file, with what the owner said about it', asy
   peer.close()
 })
 
+test('a closed page still hears her: the browser subscribes, and an urge becomes a notification', async (t) => {
+  const sent: Array<{ endpoint: string; payload: string }> = []
+  const webpush = (await import('web-push')).default
+  t.mock.method(webpush, 'sendNotification', async (subscription: { endpoint: string }, payload: string) => {
+    sent.push({ endpoint: subscription.endpoint, payload })
+    return {}
+  })
+  const real = webpush.generateVAPIDKeys()
+  const push = { publicKey: real.publicKey, privateKey: real.privateKey, subject: 'mailto:owner@example.com' }
+  const { ctx, base } = await host({}, { vapid: push })
+  const { token } = await pair(base, ctx.fairyLink.pairingCode()!.code)
+  const { peer, inbox } = await device(base, token)
+
+  peer.send(
+    encode({
+      type: 'push',
+      id: 'p1',
+      subscription: { endpoint: 'https://push.example/abc', keys: { p256dh: 'k', auth: 'a' } },
+    }),
+  )
+  await until(() => inbox.some((message) => message.type === 'push.ok'), 'the subscription')
+  assert.equal(inbox.find((message) => message.type === 'push.ok')!.count, 1)
+
+  // With the page closed there is no socket; only the notification can reach him.
+  peer.close()
+  await until(() => !ctx.fairyLink.devices().length === false, 'the close') // the peer closes asynchronously
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  ctx.emit('fairy/urge', { id: 'u1', at: 0, personId: 'owner', why: 'missed', about: '好久没说话了' })
+  await until(() => sent.length === 1, 'the notification')
+  assert.equal(sent[0]?.endpoint, 'https://push.example/abc')
+  assert.match(sent[0]!.payload, /Fairy 找你/)
+})
+
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
   const { ctx, base } = await host()
   const code = ctx.fairyLink.pairingCode()!.code

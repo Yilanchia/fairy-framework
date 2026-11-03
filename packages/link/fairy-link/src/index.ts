@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dirname, join } from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@fairy/core'
+import webpush from 'web-push'
 import { encode, parseClient, PROTOCOL_VERSION, type Accept, type DeviceKind, type HostMessage } from '@fairy/protocol'
 import { DeviceStore, type Device } from './devices.js'
 import { PairingCodes } from './pairing.js'
@@ -65,6 +66,11 @@ export interface Config {
   pairLockoutFailures: number
   /** How long that pause lasts. */
   pairLockoutMinutes: number
+  /**
+   * Web Push keys, so her words reach a closed page. Without them nothing subscribes and she can
+   * only speak to an open screen.
+   */
+  vapid?: { publicKey: string; privateKey: string; subject: string }
 }
 
 export const Config: z<Config> = z.object({
@@ -78,7 +84,17 @@ export const Config: z<Config> = z.object({
   pairCode: z.string().description('A fixed pairing code (at least 12 characters) instead of a rotating one.'),
   pairLockoutFailures: z.natural().min(1).default(20),
   pairLockoutMinutes: z.natural().min(1).default(15),
+  vapid: z
+    .object({ publicKey: z.string(), privateKey: z.string(), subject: z.string() })
+    .description('Web Push keys (VAPID). Without them, she can only speak to an open screen.'),
 })
+
+/** One browser push subscription. `keys` are the ones the browser handed out. */
+interface PushRecord {
+  readonly endpoint: string
+  readonly keys: { readonly p256dh: string; readonly auth: string }
+  readonly at: number
+}
 
 /** One connected device. Authenticated only after `hello`. */
 interface Conn {
@@ -150,6 +166,8 @@ export class FairyLink extends Service {
   private readonly failures = new Map<string, { count: number; until: number }>()
   /** Wrong codes from anywhere, so a fixed long code cannot be hammered from many addresses. */
   private readonly wrong = { count: 0, until: 0 }
+  /** Browser push subscriptions; a closed page is the only thing they reach. */
+  private records: PushRecord[] = []
   private store!: DeviceStore
 
   constructor(
@@ -165,6 +183,16 @@ export class FairyLink extends Service {
 
   async [Service.init](): Promise<void> {
     this.store = DeviceStore.open(this.config.devicesPath)
+    this.loadPush()
+    const vapid = this.config.vapid
+    if (vapid?.publicKey && vapid.privateKey) {
+      try {
+        webpush.setVapidDetails(vapid.subject || 'mailto:owner@localhost', vapid.publicKey, vapid.privateKey)
+      } catch (error) {
+        // Bad keys must not keep her from living; they only mean notifications are off.
+        this.ctx.logger.warn('fairy-link: the VAPID keys are not usable; push notifications are off', error)
+      }
+    }
     this.rotate()
     // A rotating code only works if it keeps coming; a fixed one is written once and left alone.
     if (!this.codes.isFixed) {
@@ -207,13 +235,20 @@ export class FairyLink extends Service {
       }
     })
 
-    // She reaches out: tell every device that takes a push. What she said arrives as a normal reply.
+    // She reaches out. An open screen gets the frame; a closed one gets a browser notification,
+    // which is the only way her words arrive when nobody is looking at the page.
     this.ctx.on('fairy/urge', (urge) => {
       if (urge.personId !== this.config.ownerId) return
+      let told = 0
       for (const conn of this.conns) {
-        if (conn.device && conn.accepts.has('push')) send(conn, { type: 'urge', id: randomId('u'), why: urge.why, about: urge.about })
+        if (conn.device && conn.accepts.has('push')) {
+          send(conn, { type: 'urge', id: randomId('u'), why: urge.why, about: urge.about })
+          told += 1
+        }
       }
+      if (told === 0) void this.notify(urge.why)
     })
+
 
     this.ctx.effect(
       () => () => {
@@ -249,6 +284,59 @@ export class FairyLink extends Service {
   /** Where the launcher and the owner read the current code. */
   private codePath(): string {
     return join(dirname(this.config.devicesPath), 'pairing-code')
+  }
+
+  /** Where the browser push subscriptions live, beside her devices. */
+  private pushPath(): string {
+    return join(dirname(this.config.devicesPath), 'push.json')
+  }
+
+  private loadPush(): void {
+    try {
+      if (!existsSync(this.pushPath())) return
+      const rows = JSON.parse(readFileSync(this.pushPath(), 'utf8')) as PushRecord[]
+      this.records = Array.isArray(rows) ? rows.filter((row) => typeof row?.endpoint === 'string') : []
+    } catch (error) {
+      this.ctx.logger.warn('fairy-link: could not read the push subscriptions; starting without them', error)
+      this.records = []
+    }
+  }
+
+  private savePush(): void {
+    try {
+      writeFileSync(this.pushPath(), `${JSON.stringify(this.records, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
+    } catch (error) {
+      this.ctx.logger.warn('fairy-link: could not save the push subscriptions', error)
+    }
+  }
+
+  /**
+   * The owner is not looking at any screen, so send a browser notification instead of a frame.
+   * The body stays vague on purpose: push goes through someone else's servers (decision 17).
+   */
+  private async notify(why: 'missed' | 'share' | 'pending'): Promise<void> {
+    if (!this.config.vapid?.publicKey || this.records.length === 0) return
+    const body =
+      why === 'pending' ? '她还有一件答应你的事没办完。' : why === 'share' ? '她看到一样你可能会感兴趣的东西。' : '她有一阵子没和你说话了。'
+    const payload = JSON.stringify({ title: 'Fairy 找你', body, url: '/fairy/app/' })
+    const gone: string[] = []
+    for (const record of this.records) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: record.endpoint, keys: record.keys },
+          payload,
+        )
+      } catch (error) {
+        const status = (error as { statusCode?: number }).statusCode
+        // 404/410 mean the browser threw the subscription away; stop trying it.
+        if (status === 404 || status === 410) gone.push(record.endpoint)
+        else this.ctx.logger.warn('fairy-link: a push notification failed', error)
+      }
+    }
+    if (gone.length > 0) {
+      this.records = this.records.filter((record) => !gone.includes(record.endpoint))
+      this.savePush()
+    }
   }
 
   /** Every paired device, without its token. */
@@ -362,12 +450,14 @@ export class FairyLink extends Service {
       conn.device = device
       conn.accepts = new Set<Accept>(message.accepts ?? ['push', 'confirm'])
       const last = this.ctx.fairySelf.lastConversation()
+      const vapid = this.config.vapid
       send(conn, {
         type: 'welcome',
         id: message.id,
         name: this.ctx.fairySelf.identity().name,
         protocol: PROTOCOL_VERSION,
         ...(last?.startsWith(PREFIX) ? { sessionId: last.slice(PREFIX.length) } : {}),
+        ...(vapid?.publicKey ? { pushKey: vapid.publicKey } : {}),
       })
       this.ctx.logger.info(`fairy-link: "${device.name}" connected (${[...conn.accepts].join(', ')})`)
       return
@@ -472,6 +562,18 @@ export class FairyLink extends Service {
           sessions: listed.items.map((item) => ({ id: String(item.sessionId), lastAt: item.updatedAt })),
           ...(conn.sessionId ? { selected: String(conn.sessionId) } : {}),
         })
+        return
+      }
+      case 'push': {
+        if (!this.config.vapid?.publicKey) {
+          return send(conn, { type: 'error', id: message.id, code: 'bad-shape', message: 'this host cannot push: no VAPID keys are configured' })
+        }
+        const endpoint = message.subscription.endpoint
+        this.records = this.records.filter((record) => record.endpoint !== endpoint)
+        this.records.push({ endpoint, keys: message.subscription.keys, at: Date.now() })
+        this.savePush()
+        send(conn, { type: 'push.ok', id: message.id, count: this.records.length })
+        this.ctx.logger.info(`fairy-link: a browser subscribed to her notifications (${this.records.length} now)`)
         return
       }
       case 'answer': {

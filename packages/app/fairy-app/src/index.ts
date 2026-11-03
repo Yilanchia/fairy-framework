@@ -22,6 +22,9 @@ const FILES: Record<string, { file: string; type: string }> = {
   '/': { file: 'web/index.html', type: 'text/html; charset=utf-8' },
   '/index.html': { file: 'web/index.html', type: 'text/html; charset=utf-8' },
   '/app.js': { file: 'web/app.js', type: 'text/javascript; charset=utf-8' },
+  // The service worker has to come from this origin and from this scope; it is what shows her
+  // notifications while the page is closed.
+  '/sw.js': { file: 'web/sw.js', type: 'text/javascript; charset=utf-8' },
 }
 
 const PREFIX = '/fairy/app'

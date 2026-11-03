@@ -116,7 +116,20 @@ export interface SessionsRequest {
   readonly sessionId?: string
 }
 
-export type ClientMessage = Hello | Say | Answer | Recall | StatusRequest | SessionsRequest | HistoryRequest
+/**
+ * The device just got a browser push subscription. The host keeps it and uses it when she wants to
+ * say something while no screen is open — the only way her words reach a closed page.
+ */
+export interface PushSubscribe {
+  readonly type: 'push'
+  readonly id: string
+  readonly subscription: {
+    readonly endpoint: string
+    readonly keys: { readonly p256dh: string; readonly auth: string }
+  }
+}
+
+export type ClientMessage = Hello | Say | Answer | Recall | StatusRequest | SessionsRequest | HistoryRequest | PushSubscribe
 
 /* ── host → device ─────────────────────────────────────────────────────────── */
 
@@ -127,6 +140,8 @@ export interface Welcome {
   readonly name: string
   readonly protocol: number
   readonly sessionId?: string
+  /** The VAPID public key, when this host can push; the page subscribes with it. */
+  readonly pushKey?: string
 }
 
 /** Her reply as it is being written; a client appends deltas for one `turn`. */
@@ -222,7 +237,14 @@ export interface Failure {
   readonly message: string
 }
 
-export type HostMessage = Welcome | ReplyDelta | ReplyDone | Urge | Confirm | StatusReply | SessionsReply | RecallReply | HistoryReply | Failure
+/** The host took the subscription; `count` is how many it now holds. */
+export interface PushAccepted {
+  readonly type: 'push.ok'
+  readonly id: string
+  readonly count: number
+}
+
+export type HostMessage = Welcome | ReplyDelta | ReplyDone | Urge | Confirm | StatusReply | SessionsReply | RecallReply | HistoryReply | PushAccepted | Failure
 
 /* ── validation ───────────────────────────────────────────────────────────── */
 
@@ -347,6 +369,16 @@ export function parseClient(raw: string): Parsed<ClientMessage> {
       }
       return { ok: true, message: value as unknown as HistoryRequest }
     }
+    case 'push': {
+      const sub = value.subscription
+      if (!record(sub) || typeof sub.endpoint !== 'string' || !/^https:\/\//u.test(sub.endpoint) || sub.endpoint.length > 600) {
+        return refuse('bad-shape', 'push needs an https subscription endpoint')
+      }
+      if (!record(sub.keys) || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string') {
+        return refuse('bad-shape', 'a push subscription needs p256dh and auth keys')
+      }
+      return { ok: true, message: value as unknown as PushSubscribe }
+    }
     case 'answer': {
       if (!isId(value.confirm)) return refuse('bad-shape', 'answer needs the confirm id it answers')
       if (!Array.isArray(value.selected) || value.selected.some((label) => typeof label !== 'string' || !label.trim())) {
@@ -456,6 +488,12 @@ export function parseHost(raw: string): Parsed<HostMessage> {
       }
       if (value.sessionId !== undefined && !isId(value.sessionId)) return refuse('bad-shape', 'history.sessionId is malformed')
       return { ok: true, message: value as unknown as HistoryReply }
+    }
+    case 'push.ok': {
+      if (!hasId(value) || typeof value.count !== 'number' || !Number.isInteger(value.count) || value.count < 0) {
+        return refuse('bad-shape', 'push.ok needs id and a whole count')
+      }
+      return { ok: true, message: value as unknown as PushAccepted }
     }
     case 'error': {
       if (typeof value.code !== 'string' || typeof value.message !== 'string') return refuse('bad-shape', 'error needs code and message')

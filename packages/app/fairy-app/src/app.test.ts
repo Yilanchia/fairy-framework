@@ -19,6 +19,14 @@ async function host() {
   return `http://127.0.0.1:${ctx.webServer.port}`
 }
 
+test('the service worker is served too, because a closed page needs it', async () => {
+  const base = await host()
+  const worker = await fetch(`${base}/fairy/app/sw.js`)
+  assert.equal(worker.status, 200)
+  assert.match(worker.headers.get('content-type') ?? '', /javascript/)
+  assert.match(await worker.text(), /addEventListener\('push'/u)
+})
+
 test('her page, its script and the protocol module are all served', async () => {
   const base = await host()
   const page = await fetch(`${base}/fairy/app/`)
