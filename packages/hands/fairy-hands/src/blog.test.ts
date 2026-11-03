@@ -5,7 +5,7 @@ import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt'
 import { ToolRuntime, type ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import * as hands from './index.js'
 
-const blog = { url: 'https://lycoreco.cn/', user: 'owner', password: 'abcd efgh ijkl mnop qrst uvwx' }
+const blog = { url: 'https://lycoreco.cn/', user: 'Inoue Takina', password: 'abcd efgh ijkl mnop qrst uvwx' }
 
 async function host(config: { blog?: typeof blog }) {
   const ctx = new Context()
@@ -24,41 +24,51 @@ function call(ctx: Context, args: Record<string, unknown>) {
   })
 }
 
-test('a post is a draft unless the owner says publish, and the key travels as an application password', async (t) => {
+test('a post is a draft unless the owner says publish, and it goes over XML-RPC', async (t) => {
   const calls: Array<{ url: string; init: RequestInit }> = []
   t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
     calls.push({ url, init })
-    // WordPress echoes what it stored, so the fake echoes the request's status like the real API.
-    const asked = JSON.parse(String(init.body)) as { status: string }
-    return new Response(JSON.stringify({ id: 42, link: 'https://lycoreco.cn/?p=42', status: asked.status }), { status: 201 })
+    return new Response('<?xml version="1.0"?><methodResponse><params><param><value><int>42</int></value></param></params></methodResponse>', {
+      status: 200,
+    })
   })
   const ctx = await host({ blog })
 
-  const result = await call(ctx, { title: '搬家', content: '<p>她搬到服务器上了</p>', status: 'publish', tags: 'fairy, 部署' })
+  const result = await call(ctx, { title: '搬家', content: '<p>她搬到服务器上了</p>', status: 'publish' })
   assert.equal(result.isError, false)
   assert.match(String(result.value), /已发布（id 42）：https:\/\/lycoreco\.cn\/\?p=42/u)
 
-  const [call1] = calls
-  assert.equal(call1?.url, 'https://lycoreco.cn/wp-json/wp/v2/posts')
-  assert.equal(new URL(call1!.url).pathname, '/wp-json/wp/v2/posts', 'the trailing slash on the site root does not double up')
-  const headers = call1!.init.headers as Record<string, string>
-  // The password's spaces are presentation; the header must carry them removed.
-  assert.equal(headers.authorization, `Basic ${Buffer.from('owner:abcdefghijklmnopqrstuvwx').toString('base64')}`)
-  const body = JSON.parse(String(call1!.init.body))
-  assert.deepEqual(body, { title: '搬家', content: '<p>她搬到服务器上了</p>', status: 'publish', tags: ['fairy', '部署'] })
+  const [first] = calls
+  assert.equal(first?.url, 'https://lycoreco.cn/xmlrpc.php', 'the blog is reached through its XML-RPC endpoint, not the REST API')
+  assert.match(String(first!.init.headers && (first!.init.headers as Record<string, string>)['content-type']), /text\/xml/u)
+  const body = String(first!.init.body)
+  assert.match(body, /<methodName>wp.newPost<\/methodName>/u)
+  assert.match(body, /<string>Inoue Takina<\/string>/u, 'the login name, spaces and all')
+  assert.match(body, /<string>abcdefghijklmnopqrstuvwx<\/string>/u, 'the application password loses its presentation spaces')
+  assert.match(body, /<name>post_status<\/name><value><string>publish<\/string>/u)
 
   const draft = await call(ctx, { title: '草稿', content: 'x' })
-  assert.match(String(draft.value), /已存为草稿/)
-  assert.equal(JSON.parse(String(calls[1]!.init.body)).status, 'draft')
+  assert.match(String(draft.value), /已存为草稿/u)
+  assert.match(String(calls[1]!.init.body), /<name>post_status<\/name><value><string>draft<\/string>/u)
 })
 
-test('when WordPress refuses, the reason comes back instead of a silent failure', async (t) => {
-  t.mock.method(globalThis, 'fetch', async () => new Response('{"code":"rest_cannot_create"}', { status: 401 }))
+test('what she types cannot break the XML, and the reason for a refusal is passed on', async (t) => {
+  const calls: string[] = []
+  t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+    calls.push(String(init.body))
+    return new Response(
+      '<?xml version="1.0"?><methodResponse><fault><value><struct><member><name>faultString</name><value><string>用户名或密码不正确。</string></value></member></struct></value></fault></methodResponse>',
+      { status: 200 },
+    )
+  })
   const ctx = await host({ blog })
-  const result = await call(ctx, { title: 'x', content: 'y' })
+  const result = await call(ctx, { title: 'a & b <c>', content: 'x < y && z' })
   assert.equal(result.isError, true)
-  assert.match(JSON.stringify(result), /WordPress refused the post \(401\)/)
-  assert.match(JSON.stringify(result), /rest_cannot_create/)
+  assert.match(JSON.stringify(result), /WordPress refused the post/)
+  assert.match(JSON.stringify(result), /用户名或密码不正确/)
+  // Escaped, not raw: one bare & or < would make the whole request unparseable.
+  assert.match(calls[0]!, /<string>a &amp; b &lt;c&gt;<\/string>/u)
+  assert.match(calls[0]!, /x &lt; y &amp;&amp; z/u)
 })
 
 test('a deployment with no blog gets no blog tool at all', async () => {

@@ -6,7 +6,7 @@ import z from '@deepseek-ai/schemastery'
 export interface BlogConfig {
   /** Site root, e.g. `https://lycoreco.cn`. */
   readonly url: string
-  /** The WordPress user the application password belongs to. */
+  /** The WordPress login name — not the display name. It may contain spaces. */
   readonly user: string
   /** A WordPress application password: 24 characters, usually written in four groups. */
   readonly password: string
@@ -30,17 +30,33 @@ export const Config: z<Config> = z.object({
 /**
  * Fairy's hands: the tools that are hers rather than DeepSeek Harness's.
  *
- * Today that is the owner's blog. She publishes through WordPress's REST API with an application
- * password — she never reads the site's files or its database, which is also why her mount
- * namespace can keep `/www` invisible. Publishing is an outward action, so `fairy-guard` asks the
- * owner first, every time.
+ * Today that is the owner's blog. She publishes through WordPress's XML-RPC endpoint, not the REST
+ * API, because this host's nginx does not forward the `Authorization` header to PHP-FPM — REST
+ * application-password auth answers 401 even with correct credentials, while XML-RPC carries the
+ * credentials in the body and works without touching the blog's server configuration.
+ *
+ * She still never reads the site's files or its database, which is why `/www` stays invisible to
+ * her mount namespace. Publishing is an outward action, so `fairy-guard` asks the owner first.
  */
 export const name = 'fairy-hands'
 export const inject = ['tools']
 
-function credentials(blog: BlogConfig): string {
-  // WordPress writes application passwords in groups; the spaces are presentation only.
-  return Buffer.from(`${blog.user}:${blog.password.replace(/\s+/gu, '')}`, 'utf8').toString('base64')
+function escapeXml(value: string): string {
+  return value
+    // XML 1.0 cannot carry most control characters, not even escaped.
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/gu, '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+}
+
+function member(name: string, value: string): string {
+  return `<member><name>${name}</name><value><string>${escapeXml(value)}</string></value></member>`
+}
+
+/** WordPress writes application passwords in groups; the spaces are presentation only. */
+function tidy(password: string): string {
+  return password.replace(/\s+/gu, '')
 }
 
 export function apply(ctx: Context, config: Config) {
@@ -55,52 +71,51 @@ export function apply(ctx: Context, config: Config) {
     defineTool({
       name: 'blog_publish',
       description:
-        "Write a post on the owner's WordPress blog through its REST API. Saves a draft unless status is " +
-        '"publish". The owner is asked to approve the call before it runs. Returns the post id and link.',
+        "Write a post on the owner's WordPress blog. Saves a draft unless status is 'publish'. " +
+        'The owner is asked to approve the call before it runs. Returns the post id and link.',
       parameters: {
         title: { type: 'string', required: true, description: 'The post title.' },
-        content: {
-          type: 'string',
-          required: true,
-          description: 'The post body, in HTML or the block markup the site accepts.',
-        },
+        content: { type: 'string', required: true, description: 'The post body, in HTML or block markup.' },
         status: {
           type: 'string',
           enum: ['draft', 'publish'],
           description: 'draft (the default) keeps it private; publish makes it public on the site.',
         },
-        tags: { type: 'string', description: 'Comma-separated tag names; missing ones are created.' },
       },
       output: {
         schema: { type: 'string' },
         render: (_args, value) => [{ type: 'text', text: value }],
       },
-      async execute({ title, content, status, tags }: { title: string; content: string; status?: string; tags?: string }) {
+      async execute({ title, content, status }: { title: string; content: string; status?: string }) {
         const wanted = status === 'publish' ? 'publish' : 'draft'
-        const body: Record<string, unknown> = { title, content, status: wanted }
-        const names = (tags ?? '')
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-        if (names.length > 0) body.tags = names
+        const xml = [
+          '<?xml version="1.0"?>',
+          '<methodCall><methodName>wp.newPost</methodName><params>',
+          '<param><value><int>0</int></value></param>',
+          `<param><value><string>${escapeXml(blog.user)}</string></value></param>`,
+          `<param><value><string>${escapeXml(tidy(blog.password))}</string></value></param>`,
+          '<param><value><struct>',
+          member('post_type', 'post'),
+          member('post_status', wanted),
+          member('post_title', title),
+          member('post_content', content),
+          '</struct></value></param>',
+          '</params></methodCall>',
+        ].join('')
 
-        const response = await fetch(`${root}/wp-json/wp/v2/posts`, {
+        const response = await fetch(`${root}/xmlrpc.php`, {
           method: 'POST',
-          headers: {
-            authorization: `Basic ${credentials(blog)}`,
-            'content-type': 'application/json',
-            accept: 'application/json',
-          },
-          body: JSON.stringify(body),
+          headers: { 'content-type': 'text/xml', accept: 'text/xml' },
+          body: xml,
           signal: AbortSignal.timeout(30_000),
         })
         const text = await response.text()
-        if (!response.ok) {
-          throw new Error(`WordPress refused the post (${response.status}): ${text.slice(0, 300)}`)
-        }
-        const post = JSON.parse(text) as { id?: number; link?: string; status?: string }
-        const where = post.status === 'publish' ? '已发布' : '已存为草稿'
-        return `${where}（id ${post.id ?? '?'}）：${post.link ?? `${root}/wp-admin/`}`
+        const fault = /<name>faultString<\/name>\s*<value><string>([\s\S]*?)<\/string>/u.exec(text)
+        if (fault) throw new Error(`WordPress refused the post: ${fault[1]!.trim()}`)
+        if (!response.ok) throw new Error(`WordPress answered ${response.status}: ${text.slice(0, 200)}`)
+        const id = /<int>(\d+)<\/int>/u.exec(text)?.[1]
+        if (!id) throw new Error(`WordPress did not return a post id: ${text.slice(0, 200)}`)
+        return `${wanted === 'publish' ? '已发布' : '已存为草稿'}（id ${id}）：${root}/?p=${id}`
       },
     }),
   )

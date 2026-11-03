@@ -67,7 +67,7 @@ systemctl status fairy               # 她的进程
 cd /home/fairy/fairy-framework && cp .env .env.bak
 ```
 
-四个键：`DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`FAIRY_PUBLIC_URL`（`pnpm pair` 打印的地址）、`FAIRY_PAIR_CODE`（固定配对码）。
+键：`DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`FAIRY_PUBLIC_URL`（`pnpm pair` 打印的地址）、`FAIRY_PAIR_CODE`（固定配对码）、`FAIRY_SESSION_CWD`（她的工作区，默认 `/home/fairy/work`）、`FAIRY_BLOG_URL` / `FAIRY_BLOG_USER` / `FAIRY_BLOG_PASSWORD`（`blog_publish` 用；用户名是登录名、可能带空格）。
 
 **打包上传时一定排除 `.env`**——它带着这台机器的地址和配对码，被覆盖过一次，害得配对码没生效。
 

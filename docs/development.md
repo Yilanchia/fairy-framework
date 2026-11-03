@@ -28,7 +28,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
    ├─ persona          DSH 开场白换成 Fairy
    ├─ fairy-presence   @fairy/core/presence：身份、状态、关系口气进提示词；对话写进她的生命；
    │                   fairy_status / fairy_recall / fairy_note 工具；把她想说的话变成一轮对话
-   ├─ fairy-hands      @fairy/hands  她自己的工具：blog_publish（WordPress REST API）
+   ├─ fairy-hands      @fairy/hands  她自己的工具：blog_publish（WordPress XML-RPC）
    └─ DSH 自带的 shell / 文件 / 搜索 / 网页 / 日程 / 压缩
 ```
 

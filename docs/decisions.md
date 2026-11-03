@@ -166,16 +166,23 @@ Isla 给每个人记着：哪几天来聊过、通常几点来、她和这个人
 - **她的生命只留开头 2000 字**：全文在 DSH 会话里，模型看得到；按决策 9 的道理，她的日志一行一件事，不被一次粘贴撑爆。
 - **二进制（PDF/Word 等）先不做**：DSH 的附件通道要 `FileAttachmentRef` 加准入流水线，比文本贵得多。图片已经单列（`images`，走 `image` 内容段），文本走这一节，剩下的等真有需求再开。
 
-## 23. 她发博客走 WordPress 的 REST API，不碰站点文件
+## 23. 她发博客走 WordPress 的 XML-RPC，不碰站点文件
 
-主人要她能帮忙发博客。两条路：让她读写 `/www/wwwroot/lycoreco.cn`（博客的 PHP 源码和数据库），或者走 WordPress 自带的 REST API。
+主人要她能帮忙发博客。两条路：让她读写 `/www/wwwroot/lycoreco.cn`（博客的 PHP 源码和数据库），或者走 WordPress 自己的远程接口。
 
-选后者：`@fairy/hands` 的 `blog_publish` 用应用密码（application password）POST `/wp-json/wp/v2/posts`。
+选后者，但**不是 REST，是 XML-RPC**——这是实测出来的，不是偏好：
 
-- **她的沙箱可以继续把 `/www` 挡在外面**：发文章不需要读站点文件，也就不需要为了这件事拆掉决策 20 的隔离。她用不到博客的文件系统和数据库，就不该拿到。
+- REST 的应用密码认证要 `Authorization: Basic ...` 头。这台机器的 nginx 没有把 `Authorization` 转给 PHP-FPM（`fastcgi.conf` 里没有 `HTTP_AUTHORIZATION`），所以 `/wp-json/wp/v2/users/me` 用正确凭据也返回 401 `rest_not_logged_in`。
+- XML-RPC 把用户名和密码放在请求体里，不依赖那个头，`wp.newPost` 直接成功。**不用改博客的任何配置**——主人明确要求博客不能受影响。
+- 以后想改回 REST 也可以：给 PHP 的 fastcgi 加上 `fastcgi_param HTTP_AUTHORIZATION $http_authorization;`，一行的事，但那要动共用配置，所以留给主人决定。
+
+其余不变：
+
+- **她的沙箱继续把 `/www` 挡在外面**：发文章不需要读站点文件，也就不需要为了这件事拆掉决策 20 的隔离。
 - **默认存草稿**：`status` 不给就是 draft，只有明确说 `publish` 才公开。
 - **对外动作要问**：`blog_publish` 命中 guard 的 outward 规则（名字里有 publish），每次调用都先问主人，没人回答就拒绝。
-- 凭据只在 `.env`（`FAIRY_BLOG_URL` / `_USER` / `_PASSWORD`），三个缺一个工具就不注册——没有博客的部署不会多出一个发不出去的工具。
+- 凭据只在 `.env`（`FAIRY_BLOG_URL` / `_USER` / `_PASSWORD`），三个缺一个工具就不注册。
+- 用户名是**登录名**不是显示名，而且可能带空格：这台机器上 `Inoue Takina` 才是对的，`inoue-takina` 那个 slug 会 401。
 
 ## 24. 她的控制台按绝区零的 Fairy 做
 
