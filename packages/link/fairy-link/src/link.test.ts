@@ -293,6 +293,57 @@ test('a closed page still hears her: the browser subscribes, and an urge becomes
   assert.match(sent[0]!.payload, /Fairy 找你/)
 })
 
+test('with a webhook configured, her urge reaches the phone that cannot take push', async (t) => {
+  const posts: Array<{ url: string; body: string; headers: Record<string, string> }> = []
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    posts.push({ url, body: String(init.body), headers: init.headers as Record<string, string> })
+    return new Response('ok', { status: 200 })
+  })
+  const { ctx } = await host({}, {
+    notify: { url: 'https://hook.example/dingtalk', format: 'json', token: 'secret' },
+    publicUrl: 'https://fairy.example',
+  })
+  ctx.emit('fairy/urge', { id: 'u2', at: 0, personId: 'owner', why: 'pending', about: '那篇稿子' })
+  await until(() => posts.length === 1, 'the webhook call')
+  assert.equal(posts[0]?.url, 'https://hook.example/dingtalk')
+  assert.equal(posts[0]?.headers.authorization, 'Bearer secret')
+  assert.match(posts[0]!.body, /Fairy 找你/)
+  assert.match(posts[0]!.body, /https:\/\/fairy\.example\/fairy\/app\//)
+})
+
+test('a text webhook gets one plain line instead of JSON', async (t) => {
+  const posts: string[] = []
+  t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+    posts.push(String(init.body))
+    return new Response('ok', { status: 200 })
+  })
+  const { ctx } = await host({}, { notify: { url: 'https://hook.example/text', format: 'text' } })
+  ctx.emit('fairy/urge', { id: 'u3', at: 0, personId: 'owner', why: 'missed', about: '好久没说话' })
+  await until(() => posts.length === 1, 'the webhook call')
+  assert.match(posts[0]!, /^Fairy 找你：/u)
+  assert.ok(!posts[0]!.startsWith('{'), 'text format is not JSON')
+})
+
+test('a template lets the same hook speak DingTalk or Feishu, with her words escaped', async (t) => {
+  const posts: string[] = []
+  t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+    posts.push(String(init.body))
+    return new Response('{"errcode":0}', { status: 200 })
+  })
+  const { ctx } = await host({}, {
+    notify: {
+      url: 'https://oapi.dingtalk.com/robot/send?access_token=x',
+      template: '{"msgtype":"text","text":{"content":"{{text}}"}}',
+    },
+  })
+  ctx.emit('fairy/urge', { id: 'u4', at: 0, personId: 'owner', why: 'share', about: '一篇"引号"文章' })
+  await until(() => posts.length === 1, 'the webhook call')
+  const body = JSON.parse(posts[0]!)
+  assert.equal(body.msgtype, 'text')
+  // The template's shape is kept; the values are JSON-escaped rather than pasted in raw.
+  assert.match(body.text.content, /^Fairy 找你：/u)
+})
+
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
   const { ctx, base } = await host()
   const code = ctx.fairyLink.pairingCode()!.code

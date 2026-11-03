@@ -90,6 +90,13 @@
           publicKey: !!js process.env.FAIRY_VAPID_PUBLIC ?? ''
           privateKey: !!js process.env.FAIRY_VAPID_PRIVATE ?? ''
           subject: !!js process.env.FAIRY_VAPID_SUBJECT ?? ''
+        # A webhook for phones whose browser cannot receive push (most Chinese ROM browsers, and
+        # any Android without Google services). DingTalk / Feishu / ServerChan all take a POST.
+        notify:
+          url: !!js process.env.FAIRY_NOTIFY_URL ?? ''
+          format: !!js process.env.FAIRY_NOTIFY_FORMAT ?? 'json'
+          token: !!js process.env.FAIRY_NOTIFY_TOKEN ?? ''
+        publicUrl: !!js process.env.FAIRY_PUBLIC_URL ?? ''
     # Her own page at /fairy/app/: pair a device, talk to her. No framework, no build step for the
     # client; the protocol module it imports is served from the same package the host runs.
     - id: fairy-app

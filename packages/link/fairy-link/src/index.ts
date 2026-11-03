@@ -71,6 +71,13 @@ export interface Config {
    * only speak to an open screen.
    */
   vapid?: { publicKey: string; privateKey: string; subject: string }
+  /**
+   * A webhook for when her browser notification cannot reach the owner — DingTalk, Feishu,
+   * ServerChan, PushPlus. `text` posts one plain line; `json` posts { title, body, url, text }.
+   */
+  notify?: { url: string; format?: 'text' | 'json'; token?: string; method?: string; template?: string }
+  /** Her public address, so a notification can carry a link that actually opens. */
+  publicUrl?: string
 }
 
 export const Config: z<Config> = z.object({
@@ -87,6 +94,10 @@ export const Config: z<Config> = z.object({
   vapid: z
     .object({ publicKey: z.string(), privateKey: z.string(), subject: z.string() })
     .description('Web Push keys (VAPID). Without them, she can only speak to an open screen.'),
+  notify: z
+    .object({ url: z.string(), format: z.union(['text', 'json']), token: z.string(), method: z.string(), template: z.string() })
+    .description('A webhook to reach the owner when no browser notification can: DingTalk, Feishu, ServerChan.'),
+  publicUrl: z.string().description('Her public address, so a notification can link back to her.'),
 })
 
 /** One browser push subscription. `keys` are the ones the browser handed out. */
@@ -311,31 +322,66 @@ export class FairyLink extends Service {
   }
 
   /**
-   * The owner is not looking at any screen, so send a browser notification instead of a frame.
-   * The body stays vague on purpose: push goes through someone else's servers (decision 17).
+   * The owner is not looking at any screen, so reach them another way: a browser notification if
+   * one is subscribed, otherwise (or as well) a webhook — DingTalk, Feishu, ServerChan and the like.
+   * Both carry a hint, never her words: push travels through someone else's servers.
    */
   private async notify(why: 'missed' | 'share' | 'pending'): Promise<void> {
-    if (!this.config.vapid?.publicKey || this.records.length === 0) return
     const body =
       why === 'pending' ? '她还有一件答应你的事没办完。' : why === 'share' ? '她看到一样你可能会感兴趣的东西。' : '她有一阵子没和你说话了。'
-    const payload = JSON.stringify({ title: 'Fairy 找你', body, url: '/fairy/app/' })
-    const gone: string[] = []
-    for (const record of this.records) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: record.endpoint, keys: record.keys },
-          payload,
-        )
-      } catch (error) {
-        const status = (error as { statusCode?: number }).statusCode
-        // 404/410 mean the browser threw the subscription away; stop trying it.
-        if (status === 404 || status === 410) gone.push(record.endpoint)
-        else this.ctx.logger.warn('fairy-link: a push notification failed', error)
+    const title = 'Fairy 找你'
+    const url = `${this.config.publicUrl ?? ''}/fairy/app/`
+
+    if (this.config.vapid?.publicKey && this.records.length > 0) {
+      const payload = JSON.stringify({ title, body, url })
+      const gone: string[] = []
+      for (const record of this.records) {
+        try {
+          await webpush.sendNotification({ endpoint: record.endpoint, keys: record.keys }, payload)
+        } catch (error) {
+          const status = (error as { statusCode?: number }).statusCode
+          // 404/410 mean the browser threw the subscription away; stop trying it.
+          if (status === 404 || status === 410) gone.push(record.endpoint)
+          else this.ctx.logger.warn('fairy-link: a push notification failed', error)
+        }
       }
+      if (gone.length > 0) {
+        this.records = this.records.filter((record) => !gone.includes(record.endpoint))
+        this.savePush()
+      }
+      return
     }
-    if (gone.length > 0) {
-      this.records = this.records.filter((record) => !gone.includes(record.endpoint))
-      this.savePush()
+
+    const hook = this.config.notify
+    if (!hook?.url) return
+    const text = `${title}：${body}${this.config.publicUrl ? ` ${url}` : ''}`
+    // A template lets one implementation speak DingTalk, Feishu, PushPlus or anything else that
+    // wants its own JSON shape. Values are JSON-escaped, so a quote in her words cannot break it.
+    const quoted = (value: string) => JSON.stringify(value).slice(1, -1)
+    const payload = hook.template
+      ? hook.template
+          .replaceAll('{{title}}', quoted(title))
+          .replaceAll('{{body}}', quoted(body))
+          .replaceAll('{{text}}', quoted(text))
+          .replaceAll('{{url}}', quoted(url))
+      : hook.format === 'text'
+        ? text
+        : JSON.stringify({ title, body, url, text })
+    try {
+      const response = await fetch(hook.url, {
+        method: hook.method ?? 'POST',
+        headers: {
+          ...(hook.format === 'text' && !hook.template
+            ? { 'content-type': 'text/plain; charset=utf-8' }
+            : { 'content-type': 'application/json' }),
+          ...(hook.token ? { authorization: `Bearer ${hook.token}` } : {}),
+        },
+        body: payload,
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!response.ok) this.ctx.logger.warn(`fairy-link: the notification webhook answered ${response.status}`)
+    } catch (error) {
+      this.ctx.logger.warn('fairy-link: could not reach the notification webhook', error)
     }
   }
 
