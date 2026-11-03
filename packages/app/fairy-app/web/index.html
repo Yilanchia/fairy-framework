@@ -3,77 +3,208 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#07090d" />
     <title>Fairy</title>
     <style>
+      /* Fairy's own console: angular panels, cyan lines, a grid that is the room she lives in. */
       :root {
-        --bg: #101014;
-        --card: #1a1a21;
-        --line: #2a2a33;
-        --text: #e8e8ee;
-        --dim: #9a9aa6;
-        --accent: #7aa2f7;
-        --bad: #f7768e;
+        --bg: #07090d;
+        --panel: #0e131a;
+        --panel-2: #121a23;
+        --line: #1e2a36;
+        --cyan: #4fe3f0;
+        --cyan-dim: #2b96a3;
+        --text: #dfeef2;
+        --dim: #7f939c;
+        --bad: #ff5c7a;
+        --me: #123844;
       }
       * { box-sizing: border-box; }
       html, body { height: 100%; margin: 0; }
       body {
         background: var(--bg);
         color: var(--text);
-        font: 15px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        font: 15px/1.6 "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
         display: flex;
         flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(79, 227, 240, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(79, 227, 240, 0.05) 1px, transparent 1px);
+        background-size: 44px 44px, 44px 44px;
+        mask-image: radial-gradient(circle at 30% 0%, #000 0%, transparent 78%);
+        pointer-events: none;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 3px);
+        pointer-events: none;
+        mix-blend-mode: screen;
       }
       header {
-        padding: 12px 16px calc(12px + env(safe-area-inset-top));
-        border-bottom: 1px solid var(--line);
+        position: relative;
+        z-index: 1;
+        padding: calc(14px + env(safe-area-inset-top)) 18px 12px;
         display: flex;
-        align-items: baseline;
-        gap: 10px;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(14,19,26,0.96), rgba(7,9,13,0.7));
+        backdrop-filter: blur(6px);
       }
-      header b { font-size: 16px; letter-spacing: 0.04em; }
-      #state { color: var(--dim); font-size: 12px; }
-      #state.bad { color: var(--bad); }
-      main { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-      .row { max-width: 82%; padding: 9px 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; }
-      .her { background: var(--card); align-self: flex-start; border-bottom-left-radius: 4px; }
-      .me { background: color-mix(in srgb, var(--accent) 22%, var(--card)); align-self: flex-end; border-bottom-right-radius: 4px; }
-      .note { align-self: center; color: var(--dim); font-size: 12px; text-align: center; }
+      .mark { display: flex; flex-direction: column; gap: 2px; }
+      .mark b {
+        font: 700 18px/1 "Consolas", "SF Mono", ui-monospace, monospace;
+        letter-spacing: 0.34em;
+        color: var(--cyan);
+        text-shadow: 0 0 14px rgba(79, 227, 240, 0.45);
+      }
+      .mark i {
+        font: 400 9px/1.4 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.28em;
+        font-style: normal;
+        color: var(--dim);
+      }
+      #state {
+        margin-left: auto;
+        font: 400 11px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.12em;
+        color: var(--dim);
+        border: 1px solid var(--line);
+        padding: 7px 10px;
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        background: rgba(18,26,35,0.8);
+      }
+      #state.bad { color: var(--bad); border-color: rgba(255,92,122,0.5); }
+
+      main {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 16px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--cyan-dim) transparent;
+      }
+      .row {
+        max-width: 84%;
+        padding: 11px 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        position: relative;
+        font-size: 15px;
+      }
+      .her {
+        align-self: flex-start;
+        background: linear-gradient(135deg, var(--panel-2), var(--panel));
+        border-left: 2px solid var(--cyan);
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+      }
+      .me {
+        align-self: flex-end;
+        background: linear-gradient(135deg, var(--me), #0d2730);
+        border-right: 2px solid var(--cyan-dim);
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+      }
+      .row img { display: block; max-width: 100%; border-radius: 2px; margin-top: 8px; border: 1px solid var(--line); }
+      .note {
+        align-self: center;
+        color: var(--dim);
+        font: 400 12px/1.5 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.04em;
+        text-align: center;
+        max-width: 92%;
+      }
+      .note::before { content: "▸ "; color: var(--cyan-dim); }
+
       footer {
+        position: relative;
+        z-index: 1;
         border-top: 1px solid var(--line);
         padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
         display: flex;
         gap: 8px;
+        background: linear-gradient(0deg, rgba(14,19,26,0.98), rgba(7,9,13,0.75));
+        backdrop-filter: blur(6px);
       }
       input, button { font: inherit; color: inherit; }
-      input {
+      #text {
         flex: 1;
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px 12px;
         min-width: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 11px 13px;
+        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        outline: none;
       }
+      #text:focus { border-color: var(--cyan-dim); }
       button {
-        background: var(--accent);
-        color: #0b0b10;
+        background: linear-gradient(135deg, var(--cyan), #2bb7c6);
+        color: #041014;
         border: 0;
-        border-radius: 10px;
-        padding: 10px 16px;
-        font-weight: 600;
+        padding: 11px 18px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        cursor: pointer;
       }
       button:disabled { opacity: 0.4; }
-      #pair { padding: 24px 16px; display: none; flex-direction: column; gap: 12px; max-width: 420px; margin: 0 auto; width: 100%; }
+      button.ghost {
+        background: var(--panel);
+        color: var(--cyan-dim);
+        border: 1px solid var(--line);
+        font-size: 17px;
+        line-height: 1;
+        padding: 10px 12px;
+      }
+      button.ghost:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+
+      #pair {
+        position: relative;
+        z-index: 1;
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+        padding: 26px 18px;
+        max-width: 440px;
+        width: 100%;
+        margin: 0 auto;
+      }
       #pair.show { display: flex; }
+      #pair.show::before {
+        content: "ACCESS · 需要配对";
+        font: 400 10px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.3em;
+        color: var(--cyan-dim);
+      }
       #pair p { color: var(--dim); font-size: 13px; margin: 0; }
+      #pair input {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 12px 13px;
+        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        outline: none;
+      }
+      #pair input:focus { border-color: var(--cyan-dim); }
+      #pairError { color: var(--bad); }
       .hidden { display: none !important; }
-      .row img { display: block; max-width: 100%; border-radius: 8px; margin-top: 6px; }
-      button.ghost { background: var(--card); color: var(--dim); border: 1px solid var(--line); padding: 10px 12px; font-size: 18px; line-height: 1; }
     </style>
   </head>
   <body>
     <header>
-      <b>Fairy</b>
+      <span class="mark"><b>FAIRY</b><i>BUTLER · ONLINE</i></span>
       <span id="state">未连接</span>
     </header>
 

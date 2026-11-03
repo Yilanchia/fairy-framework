@@ -115,6 +115,13 @@
             name: '@fairy/core/presence'
           - id: fairy-hands
             name: '@fairy/hands'
+            config:
+              # Her blog tool, when the deployment has one. Empty values simply leave the tool
+              # unregistered; the password is a WordPress application password kept in .env.
+              blog:
+                url: !!js process.env.FAIRY_BLOG_URL ?? ''
+                user: !!js process.env.FAIRY_BLOG_USER ?? ''
+                password: !!js process.env.FAIRY_BLOG_PASSWORD ?? ''
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:

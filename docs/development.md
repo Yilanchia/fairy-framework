@@ -28,7 +28,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
    ├─ persona          DSH 开场白换成 Fairy
    ├─ fairy-presence   @fairy/core/presence：身份、状态、关系口气进提示词；对话写进她的生命；
    │                   fairy_status / fairy_recall / fairy_note 工具；把她想说的话变成一轮对话
-   ├─ fairy-hands      @fairy/hands  占位：她自己的工具（以后接设备节点）
+   ├─ fairy-hands      @fairy/hands  她自己的工具：blog_publish（WordPress REST API）
    └─ DSH 自带的 shell / 文件 / 搜索 / 网页 / 日程 / 压缩
 ```
 
@@ -64,7 +64,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | | `src/index.ts` | `tools/pre-execute` 里先问设备（`ctx.get('fairyLink')`），再问 Web UI（`userQuestions`，默认 120 秒没人答就拒绝）、写审计 |
 | `@fairy/senses` | `feed.ts` `projects.ts` `weather.ts` | RSS/Atom 解析、`git log` 读项目、wttr.in 天气 |
 | | `index.ts` | 定时读，`stock()` 放上书架，`perceive()` 报天气 |
-| `@fairy/hands` | `src/index.ts` | 占位 |
+| `@fairy/hands` | `src/index.ts` | 她自己的工具：今天只有 `blog_publish`（走 WordPress REST API 发文章，默认存草稿） |
 | `@fairy/protocol` | `src/index.ts` | 她和设备之间的线：版本化的消息类型 + 两端共用的校验（`parseClient` / `parseHost`）。纯 TypeScript，不 import DSH |
 | `@fairy/link` | `src/devices.ts` `src/pairing.ts` | 已配对设备（令牌只存哈希）、一次性配对码 |
 | | `src/socket.ts` | 手写的 WebSocket：握手、文本帧、分片、ping/close。服务端和 CLI 客户端共用 |
@@ -153,7 +153,7 @@ DSH 的 API 文档就在依赖里：`node_modules/.pnpm/@deepseek-ai+<包名>*/n
 ## 现在的状态（2026-11-02）
 
 - 她 2026-11-01 出生；**2026-11-02 搬到了服务器 `38.244.14.207`**，以 `fairy` 账号 + `fairy.service` 常驻。PC 上那份 `.fairy-home/` 留作回滚，不再启动。部署细节见 [maintenance.md](maintenance.md)。
-- 测试：Fairy 161 个，Isla 64 个，一年记忆评测通过，冒烟通过。
+- 测试：Fairy 164 个，Isla 64 个，一年记忆评测通过，冒烟通过。
 - 已有：对话进入生命、会忘会记的记忆、睡眠整理、记下的事、主动找主人（网页关着时也会唤醒上次那个会话）、新闻和项目两样消遣、成都真实天气、安全确认和审计、聊天样子、关系随相处变深、按意思回想、通道（配对 + WebSocket + 终端客户端）、她自己的页面 `/fairy/app/`（配对、聊天、历史记录、发图片、发文本文件）。
 - 没有：手机和别的设备上的 App、网页和 App 都关着时把话推到手机上、进程守护、设备上的手脚。这些是 [plan-app.md](plan-app.md) 的内容。
 - 已知小问题：回复里没有标出用了哪些事实，所以对话里的引用不加强记忆，只有 `fairy_recall` 会。

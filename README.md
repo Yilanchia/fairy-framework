@@ -7,6 +7,7 @@
 - 开发文档：[docs/development.md](docs/development.md)（代码怎么组织、怎么跑、怎么测）
 - 跨端计划：[docs/plan-app.md](docs/plan-app.md)（App、服务器、设备节点）与 [docs/app.md](docs/app.md)（已定的 App 与通信方案）
 - 怎么长期养着她：[docs/maintenance.md](docs/maintenance.md)（每周看一眼、升级、恢复、密钥）
+- 她的控制台：[docs/console.md](docs/console.md)（外观与风格）
 - 设计取舍：[docs/decisions.md](docs/decisions.md)；记忆系统：[docs/memory.md](docs/memory.md)
 - 接手的编码智能体先读 [AGENTS.md](AGENTS.md)
 
