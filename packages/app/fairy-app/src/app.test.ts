@@ -27,6 +27,21 @@ test('the service worker is served too, because a closed page needs it', async (
   assert.match(await worker.text(), /addEventListener\('push'/u)
 })
 
+test('the manifest and icons are served, because iOS needs them to install her', async () => {
+  const base = await host()
+  const manifest = await fetch(`${base}/fairy/app/manifest.webmanifest`)
+  assert.equal(manifest.status, 200)
+  assert.match(manifest.headers.get('content-type') ?? '', /manifest\+json/)
+  assert.match(await manifest.text(), /"display": "standalone"/u)
+
+  const icon = await fetch(`${base}/fairy/app/icon-180.png`)
+  assert.equal(icon.status, 200)
+  assert.equal(icon.headers.get('content-type'), 'image/png')
+  const bytes = new Uint8Array(await icon.arrayBuffer())
+  // A PNG signature, not the utf8-mangled text of one.
+  assert.deepEqual([...bytes.slice(0, 4)], [0x89, 0x50, 0x4e, 0x47])
+})
+
 test('her page, its script and the protocol module are all served', async () => {
   const base = await host()
   const page = await fetch(`${base}/fairy/app/`)

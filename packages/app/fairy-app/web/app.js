@@ -159,11 +159,17 @@ async function offerNotifications() {
     return
   }
   if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
-    // iOS Safari only allows this for a page added to the home screen; say so instead of hiding.
+    // iOS Safari only allows this for a page added to the home screen; say so, out loud.
+    const ios = /iphone|ipad|ipod/iu.test(navigator.userAgent)
     button.textContent = '通知不可用'
     button.classList.remove('hidden')
     button.disabled = true
-    button.title = '这个浏览器不能收推送。iPhone 请先把本页「添加到主屏幕」，再从主屏幕打开。'
+    line(
+      'note',
+      ios
+        ? '这个浏览器现在收不到推送。iPhone 请点「分享 → 添加到主屏幕」，然后从主屏幕那个图标打开，再点「开启通知」。'
+        : '这个浏览器不支持推送通知，换 Chrome 或 Edge 试试。',
+    )
     return
   }
   if (Notification.permission === 'granted') {

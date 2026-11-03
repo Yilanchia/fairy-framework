@@ -25,6 +25,11 @@ const FILES: Record<string, { file: string; type: string }> = {
   // The service worker has to come from this origin and from this scope; it is what shows her
   // notifications while the page is closed.
   '/sw.js': { file: 'web/sw.js', type: 'text/javascript; charset=utf-8' },
+  // A home-screen app, because iOS only allows push to a page added to the home screen.
+  '/manifest.webmanifest': { file: 'web/manifest.webmanifest', type: 'application/manifest+json; charset=utf-8' },
+  '/icon-180.png': { file: 'web/icon-180.png', type: 'image/png' },
+  '/icon-192.png': { file: 'web/icon-192.png', type: 'image/png' },
+  '/icon-512.png': { file: 'web/icon-512.png', type: 'image/png' },
 }
 
 const PREFIX = '/fairy/app'
@@ -69,9 +74,10 @@ export function apply(ctx: Context) {
             res.end('not found')
             return
           }
-          let body: string
+          let body: Buffer
           try {
-            body = readFileSync(join(root, entry.file), 'utf8')
+            // Bytes, not text: icons are pictures, and utf8 would corrupt them.
+            body = readFileSync(join(root, entry.file))
           } catch (error) {
             ctx.logger.warn(`fairy-app: ${entry.file} is missing from the package`, error)
             res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' })
@@ -85,7 +91,7 @@ export function apply(ctx: Context) {
   )
 }
 
-function send(res: ServerResponse, type: string, body: string, headOnly: boolean): void {
+function send(res: ServerResponse, type: string, body: string | Buffer, headOnly: boolean): void {
   res.writeHead(200, {
     'content-type': type,
     'content-length': Buffer.byteLength(body),
