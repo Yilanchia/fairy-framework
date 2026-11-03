@@ -1,0 +1,56 @@
+plugins {
+  id 'com.android.application'
+}
+
+// The release key lives beside the project and is never committed; updates must be signed with the
+// same key or Android refuses to replace the installed app.
+def signing = new Properties()
+def signingFile = rootProject.file('keystore.properties')
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
+
+android {
+  namespace 'ai.fairy.app'
+  compileSdk 34
+
+  defaultConfig {
+    applicationId 'ai.fairy.app'
+    minSdk 24
+    targetSdk 34
+    // Bumped by scripts/release-android.mjs together with version.json.
+    versionCode 1
+    versionName '0.1.0'
+  }
+
+  signingConfigs {
+    release {
+      if (signingFile.exists()) {
+        storeFile rootProject.file(signing.storeFile)
+        storePassword signing.storePassword
+        keyAlias signing.keyAlias
+        keyPassword signing.keyPassword
+      }
+    }
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.release
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  buildFeatures {
+    // The app compares its own versionName against the host's version.json.
+    buildConfig true
+  }
+}
+
+dependencies {
+  // A WebSocket client is the only thing Android does not ship. No AndroidX, no FCM, no Google.
+  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}

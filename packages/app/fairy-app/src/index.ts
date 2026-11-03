@@ -30,6 +30,9 @@ const FILES: Record<string, { file: string; type: string }> = {
   '/icon-180.png': { file: 'web/icon-180.png', type: 'image/png' },
   '/icon-192.png': { file: 'web/icon-192.png', type: 'image/png' },
   '/icon-512.png': { file: 'web/icon-512.png', type: 'image/png' },
+  // Her Android app, and the version file it checks so an update is one tap.
+  '/download/fairy.apk': { file: 'web/download/fairy.apk', type: 'application/vnd.android.package-archive' },
+  '/version.json': { file: 'web/version.json', type: 'application/json; charset=utf-8' },
 }
 
 const PREFIX = '/fairy/app'

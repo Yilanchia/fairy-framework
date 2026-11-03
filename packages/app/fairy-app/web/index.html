@@ -252,6 +252,7 @@
         color: var(--cyan-dim);
       }
       #pair p { color: var(--dim); font-size: 13px; margin: 0; }
+      #pair a { color: var(--cyan); }
       #pair input {
         background: var(--panel);
         border: 1px solid var(--line);
@@ -266,7 +267,7 @@
   </head>
   <body>
     <header>
-      <span class="mark"><b>FAIRY</b><i>BUTLER · ONLINE · v8</i></span>
+      <span class="mark"><b>FAIRY</b><i>BUTLER · ONLINE · v9</i></span>
       <span id="doing"></span>
       <button id="notify" class="hidden">开启通知</button>
       <span id="state">未连接</span>
@@ -278,6 +279,7 @@
       <input id="name" placeholder="这台设备的名字" />
       <button id="pairButton">配对</button>
       <p id="pairError" class="hidden"></p>
+      <p>装了她的 App 之后，页面关着也能收到她：<a href="./download/fairy.apk">下载 Android 版</a></p>
     </section>
 
     <main id="log" class="hidden"></main>

@@ -16,3 +16,10 @@ dist/
 
 # A paired device's token, written by `fairy-link pair`. It is a device; never commit it.
 .fairy-link.json
+# her Android app: sources are tracked, build output, the signing key and the shipped APK are not
+apps/fairy-android/app/build/
+apps/fairy-android/.gradle/
+apps/fairy-android/local.properties
+apps/fairy-android/fairy-release.jks
+apps/fairy-android/keystore.properties
+packages/app/fairy-app/web/download/

@@ -1,0 +1,5 @@
+// Her app: a shell around the page she already has, plus the two things a browser cannot give her
+// — a background connection that works without Google services, and a button that updates it.
+plugins {
+  id 'com.android.application' version '8.4.0' apply false
+}

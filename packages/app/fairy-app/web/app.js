@@ -109,6 +109,18 @@ function send(frame) {
   return true
 }
 
+/**
+ * The Android shell keeps a socket of its own so her words arrive with the screen off. It has no
+ * way to read the page's storage, so the page hands it the token once, here.
+ */
+function tellShell(token) {
+  try {
+    window.FairyApp?.token?.(token)
+  } catch {
+    // A plain browser has no shell; that is the normal case.
+  }
+}
+
 /* ── notifications: the only way her words reach a page nobody is looking at ──────────────── */
 
 function urlBase64ToKey(base64) {
@@ -190,6 +202,7 @@ function connect() {
   clearTimeout(state.timer)
   if (!state.token) return show('pair')
   show('chat')
+  tellShell(state.token)
   setState('连接中…')
   const socket = new WebSocket(socketUrl())
   state.socket = socket
@@ -305,6 +318,7 @@ async function pair() {
     localStorage.setItem(KEY_NAME, name)
     state.token = answer.token
     state.name = name
+    tellShell(answer.token)
     connect()
   } catch (problem) {
     error.textContent = problem instanceof Error ? problem.message : String(problem)
