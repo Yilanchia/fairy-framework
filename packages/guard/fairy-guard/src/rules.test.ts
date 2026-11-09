@@ -99,6 +99,10 @@ describe('files and other tools', () => {
     assert.equal(judge({ name: 'shop_checkout', arguments: {} }).tier, 'money')
     assert.equal(judge({ name: 'docs_search', arguments: { query: 'how to send and delete mail' } }).tier, 'routine')
   })
+  test('applying a repair is destructive; only writing the plan is not', () => {
+    assert.equal(judge({ name: 'watch_apply_fix', arguments: { proposalId: 'fix-1' } }).tier, 'destructive')
+    assert.equal(judge({ name: 'watch_propose_fix', arguments: { findingId: 'find-1' } }).tier, 'routine')
+  })
   test('the worst tier wins and every reason is listed', () => {
     const verdict = shell('Remove-Item .env; git push origin main')
     assert.equal(verdict.tier, 'destructive')

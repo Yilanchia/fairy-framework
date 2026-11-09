@@ -9,6 +9,7 @@
     { "path": "packages/link/fairy-protocol" },
     { "path": "packages/link/fairy-link" },
     { "path": "packages/app/fairy-app" },
+    { "path": "packages/watch/fairy-watch" },
     { "path": "apps/fairy-link-cli" }
   ]
 }

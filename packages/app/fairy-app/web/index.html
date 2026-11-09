@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#07090d" />
+    <meta name="theme-color" content="#0a0d12" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icon-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,25 +12,28 @@
     <meta name="apple-mobile-web-app-title" content="Fairy" />
     <title>Fairy</title>
     <style>
-      /* Fairy's own console: angular panels, cyan lines, a grid that is the room she lives in. */
+      /* H.D.D. terminal: near-black, electric cyan, warning amber, hazard stripes, hairline rules.
+         Every panel is a rectangle with a cut corner; nothing is a rounded card. */
       :root {
-        --bg: #07090d;
-        --panel: #0e131a;
-        --panel-2: #121a23;
-        --line: #1e2a36;
-        --cyan: #4fe3f0;
-        --cyan-dim: #2b96a3;
-        --text: #dfeef2;
-        --dim: #7f939c;
-        --bad: #ff5c7a;
-        --me: #123844;
+        --bg: #0a0d12;
+        --panel: #121822;
+        --line: #22303d;
+        --line-2: #2d3f50;
+        --cyan: #3ddcff;
+        --cyan-dim: #1d7f96;
+        --amber: #ffc400;
+        --amber-dim: #8a6c11;
+        --text: #eaf6ff;
+        --dim: #6f8595;
+        --bad: #ff4d6a;
+        --me: #0d2f3c;
       }
       * { box-sizing: border-box; }
       html, body { height: 100%; margin: 0; }
       body {
         background: var(--bg);
         color: var(--text);
-        font: 15px/1.6 "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        font: 15px/1.65 "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
         display: flex;
         flex-direction: column;
         position: relative;
@@ -41,195 +44,198 @@
         position: fixed;
         inset: 0;
         background-image:
-          linear-gradient(rgba(79, 227, 240, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(79, 227, 240, 0.05) 1px, transparent 1px);
-        background-size: 44px 44px, 44px 44px;
-        mask-image: radial-gradient(circle at 30% 0%, #000 0%, transparent 78%);
+          linear-gradient(rgba(61, 220, 255, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(61, 220, 255, 0.045) 1px, transparent 1px);
+        background-size: 40px 40px, 40px 40px;
+        mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 80%);
         pointer-events: none;
       }
       body::after {
         content: "";
         position: fixed;
         inset: 0;
-        background: repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 3px);
+        background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
         pointer-events: none;
         mix-blend-mode: screen;
       }
+
       header {
         position: relative;
-        z-index: 1;
-        padding: calc(14px + env(safe-area-inset-top)) 18px 12px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px 12px;
+        z-index: 2;
+        padding: calc(10px + env(safe-area-inset-top)) 14px 0;
         border-bottom: 1px solid var(--line);
-        background: linear-gradient(180deg, rgba(14,19,26,0.96), rgba(7,9,13,0.7));
+        background: linear-gradient(180deg, rgba(14, 19, 26, 0.98), rgba(10, 13, 18, 0.86));
         backdrop-filter: blur(6px);
       }
+      .top { display: flex; align-items: flex-end; gap: 12px; }
       .mark { display: flex; flex-direction: column; gap: 2px; }
       .mark b {
-        font: 700 18px/1 "Consolas", "SF Mono", ui-monospace, monospace;
-        letter-spacing: 0.34em;
-        color: var(--cyan);
-        text-shadow: 0 0 14px rgba(79, 227, 240, 0.45);
+        font: 700 20px/1 "Consolas", "SF Mono", ui-monospace, monospace;
+        letter-spacing: 0.36em;
+        color: #fff;
+        text-shadow: 0 0 10px rgba(61, 220, 255, 0.75), 1.5px 0 rgba(255, 196, 0, 0.35), -1.5px 0 rgba(61, 220, 255, 0.5);
       }
       .mark i {
-        font: 400 9px/1.4 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.28em;
+        font: 400 8px/1.5 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.34em;
         font-style: normal;
-        color: var(--dim);
-      }
-      #state {
-        margin-left: auto;
-        font: 400 11px/1 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.12em;
-        color: var(--dim);
-        border: 1px solid var(--line);
-        padding: 7px 10px;
-        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-        background: rgba(18,26,35,0.8);
-      }
-      #state.bad { color: var(--bad); border-color: rgba(255,92,122,0.5); }
-      #doing {
-        font: 400 11px/1 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.08em;
         color: var(--cyan-dim);
+      }
+      #doing {
+        font: 400 10px/1.4 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.1em;
+        color: var(--dim);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         flex: 1 1 auto;
         min-width: 0;
+        padding-bottom: 2px;
       }
       #notify {
-        font: 600 11px/1 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.12em;
-        padding: 8px 10px;
-        background: transparent;
-        color: var(--cyan);
-        border: 1px solid var(--cyan-dim);
-        clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+        font: 700 9px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.16em;
+        padding: 7px 9px;
+        background: rgba(255, 196, 0, 0.1);
+        color: var(--amber);
+        border: 1px solid var(--amber-dim);
+        clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
         cursor: pointer;
       }
-      /* her question, waiting for a decision: a panel, not a bubble */
-      .card {
-        align-self: flex-start;
-        max-width: 92%;
-        border: 1px solid var(--cyan-dim);
-        border-left-width: 3px;
-        background: linear-gradient(135deg, rgba(18,26,35,0.96), rgba(10,15,21,0.96));
-        padding: 12px 14px;
+      #notify:disabled { color: var(--dim); border-color: var(--line); background: transparent; }
+
+      /* the readout strip: system, link state, clock — the thing that makes it a terminal */
+      .readout {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 10px;
-        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
-      }
-      .card-head {
-        font: 400 10px/1 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.2em;
-        color: var(--cyan-dim);
-      }
-      .card-question { font-size: 14px; }
-      .card-detail {
-        margin: 0;
-        font: 400 12px/1.5 "Consolas", ui-monospace, monospace;
+        margin: 8px -14px 0;
+        padding: 5px 14px;
+        font: 400 9px/1.2 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.18em;
         color: var(--dim);
-        background: rgba(4,8,12,0.7);
-        border: 1px solid var(--line);
-        padding: 8px 10px;
-        white-space: pre-wrap;
-        word-break: break-all;
-        max-height: 30vh;
-        overflow: auto;
+        border-top: 1px solid var(--line);
       }
-      .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-      .card-actions button { padding: 9px 14px; font-size: 13px; }
-      .card-actions button.chosen { outline: 2px solid var(--cyan); }
-      .card-actions button:disabled { opacity: 0.45; }
-      .card-said { font: 400 11px/1.4 "Consolas", ui-monospace, monospace; color: var(--cyan-dim); }
+      .readout b { color: var(--cyan); font-weight: 400; }
+      #state { color: var(--cyan); }
+      #state.bad { color: var(--bad); }
+      #clock { margin-left: auto; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+      /* hazard stripes: the divider the game puts between a header and a body */
+      .hazard {
+        height: 5px;
+        background: repeating-linear-gradient(-45deg, var(--amber) 0 6px, #0a0d12 6px 14px);
+        opacity: 0.55;
+        margin: 0 -14px;
+      }
 
       main {
         position: relative;
         z-index: 1;
         flex: 1;
         overflow-y: auto;
-        padding: 18px 16px 10px;
+        padding: 16px 14px 10px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         scrollbar-width: thin;
         scrollbar-color: var(--cyan-dim) transparent;
       }
-      .row {
-        max-width: 84%;
-        padding: 11px 14px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        position: relative;
-        font-size: 15px;
-      }
+      .row { max-width: 86%; position: relative; padding: 16px 13px 10px; white-space: pre-wrap; word-break: break-word; }
       .her {
         align-self: flex-start;
-        background: linear-gradient(135deg, var(--panel-2), var(--panel));
+        background: linear-gradient(135deg, rgba(18, 24, 34, 0.95), rgba(12, 16, 22, 0.95));
         border-left: 2px solid var(--cyan);
-        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+        border-top: 1px dashed rgba(61, 220, 255, 0.22);
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
       }
       .me {
         align-self: flex-end;
-        background: linear-gradient(135deg, var(--me), #0d2730);
-        border-right: 2px solid var(--cyan-dim);
-        clip-path: polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+        background: linear-gradient(135deg, var(--me), #0a1c24);
+        border-right: 2px solid var(--amber);
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
       }
-      .row img { display: block; max-width: 100%; border-radius: 2px; margin-top: 8px; border: 1px solid var(--line); }
-      .note {
-        align-self: center;
+      /* a dim index in the corner, like a log line */
+      .row::before {
+        position: absolute;
+        top: 4px;
+        font: 400 9px/1 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.1em;
         color: var(--dim);
-        font: 400 12px/1.5 "Consolas", ui-monospace, monospace;
-        letter-spacing: 0.04em;
-        text-align: center;
-        max-width: 92%;
+        opacity: 0.65;
       }
-      .note::before { content: "▸ "; color: var(--cyan-dim); }
+      .her::before { content: attr(data-index); left: 13px; color: var(--cyan-dim); }
+      .me::before { content: attr(data-index); right: 13px; color: var(--amber-dim); }
+      .row img { display: block; max-width: 100%; margin-top: 8px; border: 1px solid var(--line-2); }
+      .note {
+        align-self: stretch;
+        color: var(--dim);
+        font: 400 11px/1.5 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.06em;
+        text-align: left;
+        padding-left: 14px;
+        position: relative;
+      }
+      .note::before { content: ">"; position: absolute; left: 0; color: var(--cyan-dim); }
+      /* the newest thing she said gets a live cursor */
+      .cursor::after {
+        content: "▌";
+        color: var(--cyan);
+        animation: blink 1.1s steps(1) infinite;
+        margin-left: 2px;
+      }
+      @keyframes blink { 50% { opacity: 0; } }
 
       footer {
         position: relative;
-        z-index: 1;
+        z-index: 2;
         border-top: 1px solid var(--line);
-        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
         display: flex;
-        gap: 8px;
-        background: linear-gradient(0deg, rgba(14,19,26,0.98), rgba(7,9,13,0.75));
+        gap: 7px;
+        align-items: stretch;
+        background: linear-gradient(0deg, rgba(14, 19, 26, 0.99), rgba(10, 13, 18, 0.9));
         backdrop-filter: blur(6px);
       }
       input, button { font: inherit; color: inherit; }
+      .field {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line-2);
+        background: var(--panel);
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+      }
+      .field span { color: var(--cyan-dim); font: 400 14px/1 "Consolas", ui-monospace, monospace; padding-left: 10px; }
       #text {
         flex: 1;
         min-width: 0;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        padding: 11px 13px;
-        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        background: transparent;
+        border: 0;
+        padding: 11px 10px;
         outline: none;
       }
-      #text:focus { border-color: var(--cyan-dim); }
+      .field:focus-within { border-color: var(--cyan-dim); }
       button {
-        background: linear-gradient(135deg, var(--cyan), #2bb7c6);
-        color: #041014;
+        background: var(--cyan);
+        color: #04141a;
         border: 0;
-        padding: 11px 18px;
+        padding: 0 16px;
         font-weight: 700;
-        letter-spacing: 0.08em;
-        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
         cursor: pointer;
       }
       button:disabled { opacity: 0.4; }
       button.ghost {
         background: var(--panel);
         color: var(--cyan-dim);
-        border: 1px solid var(--line);
-        font-size: 17px;
+        border: 1px solid var(--line-2);
+        font-size: 16px;
         line-height: 1;
-        padding: 10px 12px;
+        padding: 0 11px;
       }
       button.ghost:hover { color: var(--cyan); border-color: var(--cyan-dim); }
 
@@ -238,39 +244,75 @@
         z-index: 1;
         display: none;
         flex-direction: column;
-        gap: 12px;
-        padding: 26px 18px;
-        max-width: 440px;
+        gap: 11px;
+        padding: 22px 16px;
+        max-width: 460px;
         width: 100%;
         margin: 0 auto;
       }
       #pair.show { display: flex; }
-      #pair.show::before {
-        content: "ACCESS · 需要配对";
+      #pair::before {
+        content: "ACCESS // 需要配对";
         font: 400 10px/1 "Consolas", ui-monospace, monospace;
         letter-spacing: 0.3em;
-        color: var(--cyan-dim);
+        color: var(--amber);
       }
-      #pair p { color: var(--dim); font-size: 13px; margin: 0; }
+      #pair p { color: var(--dim); font-size: 12.5px; margin: 0; }
       #pair a { color: var(--cyan); }
       #pair input {
         background: var(--panel);
-        border: 1px solid var(--line);
+        border: 1px solid var(--line-2);
         padding: 12px 13px;
-        clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
         outline: none;
       }
       #pair input:focus { border-color: var(--cyan-dim); }
       #pairError { color: var(--bad); }
       .hidden { display: none !important; }
+
+      /* boot: a couple of lines, then gone. Tap to skip. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+        padding: 24px;
+        font: 400 11px/1.9 "Consolas", ui-monospace, monospace;
+        letter-spacing: 0.16em;
+        color: var(--cyan-dim);
+        transition: opacity 0.35s ease;
+      }
+      #boot b { color: var(--cyan); letter-spacing: 0.4em; font-size: 15px; }
+      #boot.fade { opacity: 0; pointer-events: none; }
+      #boot .bar { height: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
+      #boot .bar i { display: block; height: 100%; width: 0; background: var(--cyan); animation: load 0.9s ease-out forwards; }
+      @keyframes load { to { width: 100%; } }
     </style>
   </head>
   <body>
+    <div id="boot">
+      <b>FAIRY</b>
+      <div>H.D.D. SYSTEM // 主机连接中</div>
+      <div>butler-online …</div>
+      <div class="bar"><i></i></div>
+    </div>
+
     <header>
-      <span class="mark"><b>FAIRY</b><i>BUTLER · ONLINE · v9</i></span>
-      <span id="doing"></span>
-      <button id="notify" class="hidden">开启通知</button>
-      <span id="state">未连接</span>
+      <div class="top">
+        <span class="mark"><b>FAIRY</b><i>H.D.D. · BUTLER · v10</i></span>
+        <span id="doing"></span>
+        <button id="notify" class="hidden">开启通知</button>
+      </div>
+      <div class="readout">
+        <span>SYS</span><b>FAIRY</b>
+        <span>LINK</span><span id="state">未连接</span>
+        <span id="clock">--:--:--</span>
+      </div>
+      <div class="hazard"></div>
     </header>
 
     <section id="pair">
@@ -289,7 +331,7 @@
       <button id="sendFile" class="ghost" title="发文本文件（.md/.txt）" aria-label="发文本文件">≡</button>
       <input id="file" type="file" accept="image/*" multiple hidden />
       <input id="doc" type="file" accept=".md,.markdown,.txt,.json,.csv,.yml,.yaml,text/plain,text/markdown" hidden />
-      <input id="text" placeholder="和她说点什么" autocomplete="off" />
+      <label class="field"><span>&gt;</span><input id="text" placeholder="和她说点什么" autocomplete="off" /></label>
       <button id="send">发送</button>
     </footer>
 

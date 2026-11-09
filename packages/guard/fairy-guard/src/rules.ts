@@ -104,6 +104,9 @@ export function judge(call: ToolCallView): Verdict {
   return verdictOf(
     [
       { tier: 'destructive', why: `「${call.name}」可能删除或覆盖东西`, test: /(^|_|\b)(delete|remove|drop|destroy|wipe|purge|truncate|uninstall|kill|reset|overwrite)(_|\b|$)/i },
+      // Applying a repair changes the system, whatever the tool calls itself. `propose_*` is not
+      // matched: writing a plan is not an action.
+      { tier: 'destructive', why: `「${call.name}」会改动系统`, test: /(^|_)(apply|remediate|harden|mutate)(_|$)/i },
       { tier: 'outward', why: `「${call.name}」可能向外发送`, test: /(^|_|\b)(send|post|publish|push|upload|share|tweet|email|mail|message|notify|invite|comment|reply)(_|\b|$)/i },
       { tier: 'money', why: `「${call.name}」可能花钱或动凭据`, test: /(^|_|\b)(pay|buy|purchase|order|checkout|charge|transfer|subscribe|refund|credential|secret|password|token)(_|\b|$)/i },
     ].filter((rule) => rule.test.test(name)) as Rule[],

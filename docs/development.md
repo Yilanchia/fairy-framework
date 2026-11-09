@@ -64,6 +64,7 @@ DSH 宿主进程（node node_modules/@deepseek-ai/dsh/lib/bin.js --profile fairy
 | | `src/index.ts` | `tools/pre-execute` 里先问设备（`ctx.get('fairyLink')`），再问 Web UI（`userQuestions`，默认 120 秒没人答就拒绝）、写审计 |
 | `@fairy/senses` | `feed.ts` `projects.ts` `weather.ts` | RSS/Atom 解析、`git log` 读项目、wttr.in 天气 |
 | | `index.ts` | 定时读，`stock()` 放上书架，`perceive()` 报天气 |
+| `@fairy/watch` | `packages/watch/` | **独立项目** Fairy Watch（[watch.md](watch.md)）：自己的宿主 `@fairy/watch-host`、端口、`.watch-home/`；管家 bundle 不依赖也不加载它 |
 | `@fairy/hands` | `src/index.ts` | 她自己的工具：今天只有 `blog_publish`（走 WordPress REST API 发文章，默认存草稿） |
 | `@fairy/protocol` | `src/index.ts` | 她和设备之间的线：版本化的消息类型 + 两端共用的校验（`parseClient` / `parseHost`）。纯 TypeScript，不 import DSH |
 | `@fairy/link` | `src/devices.ts` `src/pairing.ts` | 已配对设备（令牌只存哈希）、一次性配对码 |

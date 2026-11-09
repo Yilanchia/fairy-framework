@@ -245,6 +245,33 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
+  packages/watch/fairy-watch:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(47e11ee6492a70a2f2353a0c993abe69)
+      '@deepseek-ai/schemastery':
+        specifier: 3.18.5
+        version: 3.18.5
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
+  packages/watch/fairy-watch-host:
+    dependencies:
+      '@fairy/guard':
+        specifier: workspace:*
+        version: link:../../guard/fairy-guard
+      '@fairy/watch':
+        specifier: workspace:*
+        version: link:../fairy-watch
+
 packages:
 
   '@agentclientprotocol/sdk@1.4.0':

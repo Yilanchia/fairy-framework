@@ -1,0 +1,22 @@
+{
+  "name": "@fairy/watch-host",
+  "version": "0.0.1",
+  "description": "Fairy Watch's own host bundle: the guard (one human gate) and the watch. No life, no persona, no senses, no channel — Watch is a separate member of the family, not a feature of the butler.",
+  "private": true,
+  "type": "module",
+  "files": [
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "dsh": "0.2.1-rc.5"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@fairy/guard": "workspace:*",
+    "@fairy/watch": "workspace:*"
+  }
+}

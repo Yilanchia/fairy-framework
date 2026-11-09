@@ -7,6 +7,8 @@ const KEY_TOKEN = 'fairy-app:token'
 const KEY_NAME = 'fairy-app:name'
 
 const $ = (id) => document.getElementById(id)
+/** Line numbers in the log, the way the game's terminal numbers its rows. */
+let counter = 0
 const state = {
   socket: undefined,
   token: localStorage.getItem(KEY_TOKEN),
@@ -37,14 +39,45 @@ function show(which) {
 function line(kind, text) {
   const row = document.createElement('div')
   row.className = kind === 'note' ? 'note' : `row ${kind}`
+  if (kind === 'her' || kind === 'me') {
+    counter += 1
+    row.dataset.index = String(counter).padStart(2, '0')
+  }
   if (text) {
     const words = document.createElement('span')
     words.textContent = text
     row.append(words)
   }
+  if (kind === 'her') {
+    // Only the newest thing she said blinks; older lines are history.
+    for (const old of $('log').querySelectorAll('.cursor')) old.classList.remove('cursor')
+    row.classList.add('cursor')
+  }
   $('log').append(row)
   $('log').scrollTop = $('log').scrollHeight
   return row
+}
+
+/** The readout clock, because a terminal that does not tick is a screenshot. */
+function startClock() {
+  const tick = () => {
+    const now = new Date()
+    $('clock').textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map((part) => String(part).padStart(2, '0'))
+      .join(':')
+  }
+  tick()
+  setInterval(tick, 1000)
+}
+
+/** Two lines and out: long enough to feel like a system, short enough to never be in the way. */
+function boot() {
+  const panel = $('boot')
+  if (!panel) return
+  const done = () => panel.classList.add('fade')
+  setTimeout(done, 900)
+  panel.addEventListener('click', done)
+  panel.addEventListener('transitionend', () => panel.remove())
 }
 
 function picture(row, mediaType, data) {
@@ -246,6 +279,7 @@ function connect() {
         }
         for (const entry of message.lines) line(entry.who === 'owner' ? 'me' : 'her', entry.text)
         if (message.lines.length === 0) line('note', '这里还没有说过话。')
+        for (const stale of $('log').querySelectorAll('.cursor')) stale.classList.remove('cursor')
         break
       case 'status': {
         const doing = message.status.doing ?? ''
@@ -389,5 +423,7 @@ $('doc').addEventListener('change', sendDocument)
 $('notify').addEventListener('click', askNotification)
 $('name').value = state.name
 
+startClock()
+boot()
 if (state.token) connect()
 else show('pair')

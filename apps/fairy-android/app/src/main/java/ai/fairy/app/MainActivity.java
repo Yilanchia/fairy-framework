@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -48,6 +49,9 @@ public class MainActivity extends Activity {
   private WebView web;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
   private long downloading = -1;
+  /** The page's file input, waiting for whatever the picker returns. */
+  private ValueCallback<Uri[]> picker;
+  private static final int PICK = 2;
 
   @Override
   protected void onCreate(Bundle saved) {
@@ -59,7 +63,37 @@ public class MainActivity extends Activity {
     settings.setMediaPlaybackRequiresUserGesture(false);
     // The page is ours and HTTPS; a mixed-content exception is not needed.
     web.setWebViewClient(new WebViewClient());
-    web.setWebChromeClient(new WebChromeClient());
+    // A WebView does nothing when a page opens a file input unless the shell answers the chooser.
+    // Without this, sending a picture or a markdown file from the app simply does nothing.
+    web.setWebChromeClient(
+        new WebChromeClient() {
+          @Override
+          public boolean onShowFileChooser(
+              WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+            if (picker != null) picker.onReceiveValue(null);
+            picker = callback;
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            String[] accepts = params == null ? null : params.getAcceptTypes();
+            String first = accepts == null || accepts.length == 0 ? "" : accepts[0];
+            // `accept` may list extensions; only real MIME types go to getType().
+            boolean many = params != null && params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
+            boolean extended = accepts != null && accepts.length > 1;
+            intent.setType(
+                first.startsWith("image/") || first.startsWith("text/") || extended ? "*/*" : (first.isEmpty() ? "*/*" : first));
+            if (first.startsWith("image/") && !extended) intent.setType("image/*");
+            if (extended) intent.putExtra(Intent.EXTRA_MIME_TYPES, accepts);
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, many);
+            try {
+              startActivityForResult(Intent.createChooser(intent, "选择要发给她的东西"), PICK);
+            } catch (Exception problem) {
+              picker.onReceiveValue(null);
+              picker = null;
+              return false;
+            }
+            return true;
+          }
+        });
     // The page hands its device token to the shell, so the background service can speak for it.
     web.addJavascriptInterface(new Bridge(), "FairyApp");
     web.loadUrl(HOME);
@@ -87,6 +121,28 @@ public class MainActivity extends Activity {
   public void onBackPressed() {
     if (web.canGoBack()) web.goBack();
     else super.onBackPressed();
+  }
+
+  /** Hands the picked files back to the page. Without this the input would hang forever. */
+  @Override
+  protected void onActivityResult(int request, int result, Intent data) {
+    if (request != PICK) {
+      super.onActivityResult(request, result, data);
+      return;
+    }
+    if (picker == null) return;
+    Uri[] chosen = null;
+    if (result == RESULT_OK && data != null) {
+      if (data.getClipData() != null) {
+        int count = data.getClipData().getItemCount();
+        chosen = new Uri[count];
+        for (int index = 0; index < count; index++) chosen[index] = data.getClipData().getItemAt(index).getUri();
+      } else if (data.getData() != null) {
+        chosen = new Uri[] { data.getData() };
+      }
+    }
+    picker.onReceiveValue(chosen);
+    picker = null;
   }
 
   @Override

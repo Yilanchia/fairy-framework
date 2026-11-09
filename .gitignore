@@ -5,6 +5,9 @@ dist/
 # Fairy's private DSH home: profile, sessions, logs, credentials. Never commit.
 .fairy-home/
 
+# Fairy Watch's own home. It is a separate project, so its data lives apart from hers.
+.watch-home/
+
 # Her life. It is her, so it is backed up on purpose, never committed by accident.
 *.life.jsonl
 *.life.jsonl.*.bak

@@ -1,0 +1,27 @@
+# Fairy Watch's own host layer.
+#
+# Watch is a separate member of the family: it mounts the one human gate (guard) and the watch
+# itself, and nothing else. It does not mount her life, her persona, her senses or her channel.
+# That is the point — a defence agent must not be a feature of the butler it happens to share a
+# family name with.
+#
+# Paths come from `scripts/watch.mjs`, which owns Watch's own home. They deliberately use
+# WATCH_* rather than FAIRY_* so the two deployments cannot read each other's files by accident.
+
+- insert:
+    - id: fairy-guard
+      name: '@fairy/guard'
+      config:
+        auditPath: !!js process.env.WATCH_AUDIT_PATH
+        ask: [destructive, outward, money]
+    - id: fairy-watch
+      name: '@fairy/watch'
+      config:
+        evidencePath: !!js process.env.WATCH_EVIDENCE_PATH
+        databasePath: !!js process.env.WATCH_DB_PATH
+        reportDir: !!js process.env.WATCH_REPORT_DIR
+        ports: true
+        ssh: true
+        backup: true
+        backupPaths: []
+        backupStaleHours: 36
