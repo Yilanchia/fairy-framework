@@ -39,8 +39,9 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
   }
   // A conversation started from a device needs a directory to own before it exists.
   const workspace = join(home, 'workspace')
+  const chosen = ownEnv().FAIRY_SESSION_CWD || process.env.FAIRY_SESSION_CWD || workspace
   try {
-    mkdirSync(workspace, { recursive: true })
+    mkdirSync(chosen, { recursive: true })
   } catch {
     // It is created again when her first device conversation starts; the failure is not fatal.
   }
@@ -60,7 +61,9 @@ function place(home, lifePath = join(home, 'fairy.life.jsonl')) {
       FAIRY_AUDIT_PATH: join(home, 'audit.jsonl'),
       // The devices she may talk to (tokens kept as hashes), and where device conversations live.
       FAIRY_DEVICES_PATH: join(home, 'devices.json'),
-      FAIRY_SESSION_CWD: workspace,
+      // Her own directory: every work room is a subdirectory of it. Honours .env, because moving
+      // her files somewhere else should be a decision, not something the launcher silently undoes.
+      FAIRY_SESSION_CWD: chosen,
     },
   }
 }

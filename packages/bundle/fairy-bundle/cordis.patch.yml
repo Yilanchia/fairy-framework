@@ -135,6 +135,11 @@
                 url: !!js process.env.FAIRY_BLOG_URL ?? ''
                 user: !!js process.env.FAIRY_BLOG_USER ?? ''
                 password: !!js process.env.FAIRY_BLOG_PASSWORD ?? ''
+              # One directory she owns, cut into named rooms, with a hard cap on how many are open
+              # at once: the cap is what keeps "she organises herself" from becoming clutter.
+              workspace:
+                root: !!js process.env.FAIRY_SESSION_CWD ?? ''
+                max: 8
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:
