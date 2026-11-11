@@ -1,7 +1,7 @@
 // Fairy's page. One file, no framework, no build step: the only shared code is the protocol
 // package the host serves beside it. Everything the host sends is rendered with textContent, so
 // nothing she or the owner types can become markup.
-import { encode, parseHost, PROTOCOL_VERSION } from './protocol.js'
+import { encode, parseHost, PROTOCOL_VERSION } from '/fairy/app/protocol.js'
 
 const KEY_TOKEN = 'fairy-app:token'
 const KEY_NAME = 'fairy-app:name'
@@ -168,7 +168,7 @@ async function subscribe() {
   if (!state.pushKey || !('serviceWorker' in navigator) || !('PushManager' in window)) return
   if (Notification.permission !== 'granted') return
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js')
+    const registration = await navigator.serviceWorker.register('/fairy/app/sw.js')
     const existing = await registration.pushManager.getSubscription()
     const subscription =
       existing ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToKey(state.pushKey) }))

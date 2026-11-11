@@ -59,7 +59,16 @@ export function apply(ctx: Context) {
         kind: 'prefix',
         path: PREFIX,
         handler: (req: IncomingMessage, res: ServerResponse) => {
-          const path = (req.url ?? '/').split('?', 1)[0]!.slice(PREFIX.length) || '/'
+          const raw = (req.url ?? '/').split('?', 1)[0]!
+          // `/fairy/app` without the slash used to serve the page anyway, and every relative URL
+          // in it then resolved against `/fairy/` — the script 404'd and the page sat on its boot
+          // screen. Redirect to the canonical form instead of serving two broken-together pages.
+          if (raw === PREFIX) {
+            res.writeHead(308, { location: `${PREFIX}/${(req.url ?? '').includes('?') ? `?${(req.url ?? '').split('?')[1]}` : ''}` })
+            res.end()
+            return
+          }
+          const path = raw.slice(PREFIX.length) || '/'
           if (req.method !== 'GET' && req.method !== 'HEAD') {
             res.writeHead(405, { allow: 'GET, HEAD' })
             res.end()

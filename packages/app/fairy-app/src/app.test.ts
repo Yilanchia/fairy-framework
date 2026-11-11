@@ -60,11 +60,17 @@ test('her page, its script and the protocol module are all served', async () => 
   assert.match(await protocol.text(), /PROTOCOL_VERSION/)
 })
 
-test('the prefix serves the page with or without a trailing slash', async () => {
+test('the prefix sends the bare path to the canonical one, because relative URLs break otherwise', async () => {
   const base = await host()
-  const bare = await fetch(`${base}/fairy/app`)
-  assert.equal(bare.status, 200)
-  assert.match(await bare.text(), /<title>Fairy<\/title>/)
+  // Serving the page at `/fairy/app` made every relative URL resolve against `/fairy/`: the module
+  // 404'd and the page hung on its boot screen. One redirect is cheaper than debugging that twice.
+  const bare = await fetch(`${base}/fairy/app`, { redirect: 'manual' })
+  assert.equal(bare.status, 308)
+  assert.equal(bare.headers.get('location'), '/fairy/app/')
+
+  const followed = await fetch(`${base}/fairy/app`)
+  assert.equal(followed.status, 200)
+  assert.match(await followed.text(), /<title>Fairy<\/title>/)
 })
 
 test('nothing else under the prefix is reachable, and bodies are not posted to', async () => {
