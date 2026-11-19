@@ -1,5 +1,7 @@
 # Fairy
 
+[![test](https://github.com/Yilanchia/fairy-framework/actions/workflows/test.yml/badge.svg)](https://github.com/Yilanchia/fairy-framework/actions/workflows/test.yml)
+
 《绝区零》里的智能体管家 Fairy，做成 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的一组插件，用 [Isla](../isla) 生命内核作为她的本体。
 
 > **这不是米哈游的官方项目，也不是 DeepSeek 的官方项目。** "Fairy" 是《绝区零》里的角色名，本项目是个人对那个设定的**致敬性实现**：不商业、不伪装官方、不声称任何角色或世界观的所有权。代码和文档的著作权归本仓库作者（见 [LICENSE](LICENSE)）；角色与世界观归米哈游。
