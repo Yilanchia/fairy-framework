@@ -13,6 +13,7 @@
 - 怎么长期养着她：[docs/maintenance.md](docs/maintenance.md)（每周看一眼、升级、恢复、密钥）
 - 她的控制台：[docs/console.md](docs/console.md)（外观与风格）
 - 设计取舍：[docs/decisions.md](docs/decisions.md)；记忆系统：[docs/memory.md](docs/memory.md)；**独立项目** Fairy Watch：[docs/watch.md](docs/watch.md)
+- 一篇讲设计的文章：[docs/essay-continuous-self.md](docs/essay-continuous-self.md)（怎么让一个 AI 拥有连续的自我）
 - 接手的编码智能体先读 [AGENTS.md](AGENTS.md)
 
 ## 三个可能值得看的设计决定
@@ -45,32 +46,57 @@ DSH 宿主进程（她的身体：agent loop、工具、会话、Web UI）
 | `packages/bundle/fairy-bundle` | 一个 `cordis.patch.yml`，把上面的插件装进 DSH |
 | `scripts/fairy.mjs` | 启动脚本，唯一设置 `DSH_HOME` 的地方 |
 
-## 运行
+## 跑起来（五分钟）
 
-需要 Node 24、pnpm 11，以及 `D:\isla` 已经 build 过（`pnpm --filter @isla/life build`）。
+先说清楚一件事：**这个仓库自己跑不起来，她需要一个"生命内核"。** 她的自我在 [`isla`](https://github.com/Yilanchia/isla) 的 `life-kernel` 分支里，本仓库通过 `link:` 指向一个和它平级的目录。
 
-```bash
-pnpm install
+```
+父目录/
+├── isla/               ← 生命内核（@isla/life）
+└── fairy-framework/    ← 这个仓库
 ```
 
+需要：Node 24、pnpm 11、一份 DeepSeek API Key（可留到最后），以及下面的生命内核。
+
 ```bash
+# 0. 先把内核拿下来，并且不要改名：路径是写死的 link:
+git clone -b life-kernel https://github.com/Yilanchia/isla.git isla
+
+# 1. 两边各装一次，内核先 build
+cd isla && pnpm install && pnpm --filter @isla/life build && cd ..
+
+# 2. 她这边
+cd fairy-framework
+pnpm install
+cp .env.example .env      # 想先用本地模型/自己的 key 就改这里，也可以留空
 pnpm fairy
 ```
 
-打开终端打印的地址（默认端口 3090）。第一次需要 DeepSeek API Key：在 Fairy 的 Web 设置 → 模型里添加，或者把 `.env.example` 复制成 `.env` 填上。
+终端会打印一个地址（默认 `http://127.0.0.1:3090`）。打开它，在 **设置 → 模型** 里填 API Key，就能和她说话。
 
-她的页面（给手机、平板用）：`http://127.0.0.1:3090/fairy/app/`。第一次用它要一个配对码——宿主控制台打印的 `fairy-link: pairing code 123456`。
+手机/平板用她的页面：`http://127.0.0.1:3090/fairy/app/`。第一次要配对——宿主控制台会打印 `fairy-link: pairing code 123456`。
 
-**第一次启动就是她的出生**，基因组会永久写进生命日志。启动之前，先看一遍、改好 [`packages/self/fairy-isla/src/genome.ts`](packages/self/fairy-isla/src/genome.ts)。
+> **第一次启动就是她的出生。** 基因组（性格、说话方式、底线）会永久写进生命日志，之后改基因组不会改变已经出生的她。启动前先看一遍 [`packages/self/fairy-isla/src/genome.ts`](packages/self/fairy-isla/src/genome.ts)。
 
-其他命令：
+### 卡住了先看这里
+
+| 现象 | 原因 |
+|---|---|
+| `pnpm install` 报找不到 `@isla/life` | 内核没 clone、或没跟本仓库放在同一个父目录、或不在 `life-kernel` 分支 |
+| 启动后她说不了话 | 没配 API Key；在页面设置里填，或写进 `.env` 的 `DEEPSEEK_API_KEY` |
+| 页面打不开 | 端口被占：`FAIRY_PORT=3190 pnpm fairy` |
+| 想确认她还好 | `pnpm doctor`（只读，不加锁，她运行时也能跑） |
+
+### 其他命令
 
 | 命令 | 作用 |
 |---|---|
 | `pnpm test` | 单元测试和集成测试（真实的 DSH SystemPrompt / ToolRuntime、真实的 Isla 生命） |
 | `pnpm smoke` | 在临时 home 里真实启动一次 DSH，确认 Web 起来、她出生了，然后清理掉 |
 | `pnpm dump` | 打印 DSH 组合出来的完整插件树 |
-| `pnpm memory [词]` | 看她记下了主人哪些事、对自己有什么认识；带上词就按她主动回想的方式搜一遍。只读，不加锁，她运行时也能用，不会让她“想起”任何事。看备份就把 `FAIRY_LIFE_PATH` 指向那个副本 |
+| `pnpm doctor` | 一次回答"她还好吗"：生命能读、谁在写、备份、语义回想、网页 |
+| `pnpm memory [词]` | 看她记下了主人哪些事、对自己有什么认识；带上词就按她主动回想的方式搜一遍。只读，不加锁 |
+| `pnpm pair` | 打印配对地址和当前配对码 |
 
 ## 她住在哪
 
