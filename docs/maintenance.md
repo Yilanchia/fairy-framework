@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 服务器 | `38.244.14.207`，Ubuntu 24.04，2 核 / 2G / 30G |
+| 服务器 | `your-host`，Ubuntu 24.04，2 核 / 2G / 30G |
 | 她的账号 | `fairy`（不是 root，没有 sudo），家目录 `/home/fairy` |
 | 代码 | `/home/fairy/fairy-framework`，生命内核 `/home/fairy/isla` |
 | Node | `/opt/node24`（v24.22.2），`/usr/local/bin` 里是软链；**没动系统的包管理器** |

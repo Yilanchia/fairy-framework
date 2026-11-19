@@ -1,6 +1,7 @@
 {
   "name": "fairy",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Fairy: a butler agent built as DeepSeek Harness plugins, with an Isla life kernel as her self.",
   "type": "module",
   "packageManager": "pnpm@11.22.0",

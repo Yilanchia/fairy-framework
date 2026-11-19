@@ -1,0 +1,19 @@
+Fairy
+Copyright 2026 Yilanchia
+
+This product is a personal, non-commercial implementation inspired by the
+character "Fairy" from the video game *Zenless Zone Zero* (《绝区零》).
+
+It is NOT an official product of miHoYo / HoYoverse, and it is NOT an official
+project of DeepSeek. The character, its name, and the world it belongs to are
+the property of their respective owners. No affiliation, endorsement, or
+sponsorship is claimed or implied.
+
+"Fairy" as a project name is used here in a fan-work / homage sense only. If you
+intend to use this code commercially, choose a name of your own: this one is a
+trademark risk you should not inherit.
+
+Bundled third-party components keep their own licenses, among them:
+  - DeepSeek Harness packages (peer dependencies, not vendored)
+  - web-push (MIT)
+  - okhttp (Apache-2.0), used by the Android shell

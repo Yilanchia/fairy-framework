@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "如果这份工作对你的研究或项目有用，引用时请指向这个仓库。"
+title: "Fairy: a butler agent with a continuous self"
+abstract: >-
+  一个把"持久的自我"和"可替换的身体"分开的智能体管家实现：只追加的生命日志、
+  会话作为窗口、危险动作先问人、多端共用一个写入者。
+type: software
+authors:
+  - alias: Yilanchia
+    website: "https://github.com/Yilanchia"
+repository-code: "https://github.com/Yilanchia/fairy-framework"
+url: "https://github.com/Yilanchia/fairy-framework"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-11-19"
+keywords:
+  - agent
+  - llm
+  - memory
+  - persistent-context
+  - deepseek-harness
