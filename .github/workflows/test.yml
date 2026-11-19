@@ -21,7 +21,7 @@ jobs:
         with:
           path: fairy-framework
 
-      - name: her life kernel (the link: target)
+      - name: her life kernel (the link target)
         uses: actions/checkout@v4
         with:
           repository: Yilanchia/isla
