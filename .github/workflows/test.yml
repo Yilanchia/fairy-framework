@@ -42,17 +42,36 @@ jobs:
       - name: build the kernel first — `life...` also builds its @isla/* dependencies
         working-directory: isla
         run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter "@isla/life..." build
+          set +e
+          { pnpm install --frozen-lockfile && pnpm --filter "@isla/life..." build; } > /tmp/kernel.log 2>&1
+          code=$?
+          tail -c 3000 /tmp/kernel.log >> "$GITHUB_STEP_SUMMARY"
+          exit $code
 
       - name: install
         working-directory: fairy-framework
-        run: pnpm install --frozen-lockfile
+        run: |
+          set +e
+          pnpm install --frozen-lockfile > /tmp/install.log 2>&1
+          code=$?
+          # A failed install must explain itself somewhere readable without signing in.
+          tail -c 3000 /tmp/install.log >> "$GITHUB_STEP_SUMMARY"
+          exit $code
 
       - name: test
         working-directory: fairy-framework
-        run: pnpm test
+        run: |
+          set +e
+          pnpm test > /tmp/test.log 2>&1
+          code=$?
+          tail -c 4000 /tmp/test.log >> "$GITHUB_STEP_SUMMARY"
+          exit $code
 
       - name: smoke — a real host has to boot her, not just compile
         working-directory: fairy-framework
-        run: pnpm smoke
+        run: |
+          set +e
+          pnpm smoke > /tmp/smoke.log 2>&1
+          code=$?
+          tail -c 3000 /tmp/smoke.log >> "$GITHUB_STEP_SUMMARY"
+          exit $code
