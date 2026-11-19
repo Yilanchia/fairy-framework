@@ -134,7 +134,8 @@ async function host(options: { conversation?: string | undefined } = {}, link: P
 }
 
 async function until(done: () => boolean, what = 'the frame'): Promise<void> {
-  for (let attempt = 0; attempt < 400; attempt++) {
+  // CI runners are slower and colder than a laptop; 2s of polling was enough to flake.
+  for (let attempt = 0; attempt < 2000; attempt++) {
     if (done()) return
     await new Promise((resolve) => setTimeout(resolve, 5))
   }
