@@ -16,13 +16,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: this repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: fairy-framework
 
       - name: her life kernel (the link target)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: Yilanchia/isla
           ref: life-kernel
@@ -32,7 +31,7 @@ jobs:
         with:
           version: 11
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -40,11 +39,11 @@ jobs:
             isla/pnpm-lock.yaml
             fairy-framework/pnpm-lock.yaml
 
-      - name: build the kernel first, or every type her side imports is missing
+      - name: build the kernel first — `life...` also builds its @isla/* dependencies
         working-directory: isla
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @isla/life build
+          pnpm --filter "@isla/life..." build
 
       - name: install
         working-directory: fairy-framework
