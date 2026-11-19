@@ -19,6 +19,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: fairy-framework
+          # One test reads this repository's own `git log` and expects three commits.
+          # checkout is shallow by default, which would make that test fail for the wrong reason.
+          fetch-depth: 0
 
       - name: her life kernel (the link target)
         uses: actions/checkout@v5
