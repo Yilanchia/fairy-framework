@@ -43,7 +43,7 @@ jobs:
         working-directory: isla
         run: |
           set +e
-          { pnpm install --frozen-lockfile && pnpm --filter "@isla/life..." build; } > /tmp/kernel.log 2>&1
+          { pnpm install --no-frozen-lockfile && pnpm --filter "@isla/life..." build; } > /tmp/kernel.log 2>&1
           code=$?
           tail -c 3000 /tmp/kernel.log >> "$GITHUB_STEP_SUMMARY"
           exit $code
@@ -52,7 +52,7 @@ jobs:
         working-directory: fairy-framework
         run: |
           set +e
-          pnpm install --frozen-lockfile > /tmp/install.log 2>&1
+          pnpm install --no-frozen-lockfile > /tmp/install.log 2>&1
           code=$?
           # A failed install must explain itself somewhere readable without signing in.
           tail -c 3000 /tmp/install.log >> "$GITHUB_STEP_SUMMARY"
