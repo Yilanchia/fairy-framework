@@ -1,0 +1,59 @@
+name: test
+
+# She needs two repositories: this one, and the life kernel she is built on. The kernel is checked
+# out as a sibling directory because the dependency is a `link:` path, not a registry version.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: this repository
+        uses: actions/checkout@v4
+        with:
+          path: fairy-framework
+
+      - name: her life kernel (the link: target)
+        uses: actions/checkout@v4
+        with:
+          repository: Yilanchia/isla
+          ref: life-kernel
+          path: isla
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            isla/pnpm-lock.yaml
+            fairy-framework/pnpm-lock.yaml
+
+      - name: build the kernel first, or every type her side imports is missing
+        working-directory: isla
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @isla/life build
+
+      - name: install
+        working-directory: fairy-framework
+        run: pnpm install --frozen-lockfile
+
+      - name: test
+        working-directory: fairy-framework
+        run: pnpm test
+
+      - name: smoke — a real host has to boot her, not just compile
+        working-directory: fairy-framework
+        run: pnpm smoke
