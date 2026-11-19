@@ -495,7 +495,11 @@ export class FairyLink extends Service {
       this.store.touch(device.id)
       conn.device = device
       conn.accepts = new Set<Accept>(message.accepts ?? ['push', 'confirm'])
-      const last = this.ctx.fairySelf.lastConversation()
+      // A window opened while another one is talking joins that conversation on arrival, so her
+      // replies reach it without waiting for it to say something first.
+      const live = [...this.bindings].find(([, conns]) => conns.size > 0)?.[0]
+      if (live) this.bind(conn, SessionId(live))
+      const last = live ? `${PREFIX}${live}` : this.ctx.fairySelf.lastConversation()
       const vapid = this.config.vapid
       send(conn, {
         type: 'welcome',
@@ -539,7 +543,28 @@ export class FairyLink extends Service {
           sender.prompt({ requestId: randomId('q'), sessionId, mode: 'queue', content }, signal)
         const target = await this.sessionFor(conn, message.sessionId, sender)
         this.bind(conn, target)
+        // Windows that are connected but have not spoken yet follow the conversation that just
+        // became active, so her answer reaches them too. One owner, one conversation today.
+        for (const other of this.conns) {
+          if (other === conn || !other.device || other.sessionId) continue
+          this.bind(other, target)
+        }
         conn.reply = ''
+        // Every other window on this conversation should see the owner's words too, now rather
+        // than after she answers. Her reply is broadcast separately when the turn ends.
+        const said = message.document
+          ? `${words ? `${words}\n\n` : ''}📄 ${message.document.name}（${message.document.text.length} 字）`
+          : message.images?.length
+            ? `${words ? `${words}\n\n` : ''}［${message.images.length} 张图片］`
+            : words
+        if (said) {
+          // One owner, one conversation today: every other window sees the words, whether or not
+          // it has spoken yet. When several conversations exist this narrows to the bound ones.
+          for (const other of this.conns) {
+            if (other === conn || !other.device) continue
+            send(other, { type: 'heard', id: randomId('h'), at: Date.now(), text: said, from: conn.device.name })
+          }
+        }
         try {
           await tell(target)
         } catch (error) {
@@ -632,12 +657,18 @@ export class FairyLink extends Service {
   }
 
   /**
-   * The conversation this device speaks into: the one it named, the one it already had, the one
-   * the owner last talked in, or a new one. Never a guess: a failed create is the device's error.
+   * The conversation this device speaks into: the one it named, the one it already had, the
+   * conversation another window is in right now, the one the owner last talked in, or a new one.
+   *
+   * The live session matters: a second device opened while the first is talking should join that
+   * conversation, not resolve "last" independently and end up in a different room of her memory.
    */
   private async sessionFor(conn: Conn, asked: string | undefined, sender: SessionSender): Promise<SessionId> {
     if (asked) return SessionId(asked)
     if (conn.sessionId) return conn.sessionId
+    for (const [sessionId, conns] of this.bindings) {
+      if (conns.size > 0) return SessionId(sessionId)
+    }
     const last = this.ctx.fairySelf.lastConversation()
     if (last?.startsWith(PREFIX)) return SessionId(last.slice(PREFIX.length))
     const created = await sender.create({ cwd: this.config.sessionCwd, agentPreset: this.config.agentPreset })

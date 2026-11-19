@@ -294,6 +294,10 @@ function connect() {
       case 'urge':
         line('note', `她主动找你：${message.about}`)
         break
+      case 'heard':
+        // Another window on the same conversation said this; show it here too.
+        line('me', message.text)
+        break
       case 'confirm':
         confirmCard(message)
         break

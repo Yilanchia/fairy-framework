@@ -244,7 +244,33 @@ export interface PushAccepted {
   readonly count: number
 }
 
-export type HostMessage = Welcome | ReplyDelta | ReplyDone | Urge | Confirm | StatusReply | SessionsReply | RecallReply | HistoryReply | PushAccepted | Failure
+/**
+ * Another window said something into this same conversation. Her reply already reaches every
+ * window; without this, the owner's own words would only appear on the device that typed them.
+ */
+export interface Heard {
+  readonly type: 'heard'
+  readonly id: string
+  /** Epoch milliseconds, like every other time on this wire. */
+  readonly at: number
+  readonly text: string
+  /** The device that said it, when the host knows. */
+  readonly from?: string
+}
+
+export type HostMessage =
+  | Welcome
+  | ReplyDelta
+  | ReplyDone
+  | Urge
+  | Confirm
+  | StatusReply
+  | SessionsReply
+  | RecallReply
+  | HistoryReply
+  | PushAccepted
+  | Heard
+  | Failure
 
 /* ── validation ───────────────────────────────────────────────────────────── */
 
@@ -494,6 +520,13 @@ export function parseHost(raw: string): Parsed<HostMessage> {
         return refuse('bad-shape', 'push.ok needs id and a whole count')
       }
       return { ok: true, message: value as unknown as PushAccepted }
+    }
+    case 'heard': {
+      if (!hasId(value) || !isTime(value.at) || typeof value.text !== 'string' || !value.text.trim()) {
+        return refuse('bad-shape', 'heard needs id, at and text')
+      }
+      if (value.from !== undefined && typeof value.from !== 'string') return refuse('bad-shape', 'heard.from must be text')
+      return { ok: true, message: value as unknown as Heard }
     }
     case 'error': {
       if (typeof value.code !== 'string' || typeof value.message !== 'string') return refuse('bad-shape', 'error needs code and message')

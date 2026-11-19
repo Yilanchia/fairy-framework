@@ -344,6 +344,35 @@ test('a template lets the same hook speak DingTalk or Feishu, with her words esc
   assert.match(body.text.content, /^Fairy 找你：/u)
 })
 
+test('two windows share one conversation: what one says, the other sees, and both hear her', async () => {
+  const { ctx, base, sender } = await host()
+  const { token: phoneToken } = await pair(base, ctx.fairyLink.pairingCode()!.code, '手机')
+  const { token: laptopToken } = await pair(base, ctx.fairyLink.pairingCode()!.code, '电脑')
+  const phone = await device(base, phoneToken)
+  // The laptop connects while the phone is already in the conversation; it must join that one
+  // rather than resolve a conversation of its own.
+  const laptop = await device(base, laptopToken)
+
+  phone.peer.send(encode({ type: 'say', id: 's1', text: '我在手机上说的' }))
+  await until(() => laptop.inbox.some((message) => message.type === 'heard'), 'the echo on the other window')
+  const heard = laptop.inbox.find((message) => message.type === 'heard')!
+  assert.equal(heard.text, '我在手机上说的')
+  assert.equal(heard.from, '手机')
+
+  await until(() => sender.prompted.length === 1, 'her turn')
+  assert.equal(sender.prompted[0]?.text.includes('我在手机上说的'), true)
+
+  // Her reply is broadcast to every window on the session, not only the one that spoke.
+  // The event bus only exists on the host's context; the shape it reads is (session.id, event).
+  const bus = ctx as unknown as { emit: (name: string, session: { id: unknown }, event: unknown) => void }
+  const session = { id: sender.prompted[0]!.sessionId }
+  bus.emit('session/event', session, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '听见了。' }] } } })
+  bus.emit('session/event', session, { type: 'turn/end', data: { turn: 1 } })
+  await until(() => laptop.inbox.some((message) => message.type === 'reply.done'), 'her reply on the laptop')
+  phone.peer.close()
+  laptop.peer.close()
+})
+
 test('a pairing code buys exactly one token, and only the right code buys any', async () => {
   const { ctx, base } = await host()
   const code = ctx.fairyLink.pairingCode()!.code
