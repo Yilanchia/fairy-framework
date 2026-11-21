@@ -252,6 +252,8 @@ Twelve probes (four each of identity, episode and causal), two arms:
 
 Reproducible with `e1-score-real.mjs`. These eight are the strongest evidence so far that episodes survive the move: she did not say "I don't know" twice — she quoted the same poem, the same diary, and the same shelf state on both arms.
 
+**No-memory baseline**: with the log, sessions, documents, backups and vector cache removed, the same model hit **0 of 6 memory probes**, answering "I have no such memory" and "I did not exist on 1 November". The only hit was the current shelf, which is environment perception, not memory. E1 is 8/8 on both arms; the baseline is 0/6. The contrast is unambiguous.
+
 ### 5.3 E2: no fork, and what "window" means
 
 Two DSH web tabs wrote into one host, one message each. On the log side:
