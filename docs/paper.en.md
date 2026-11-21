@@ -12,7 +12,7 @@
 
 Mainstream agents treat memory as an add-on: vector retrieval, conversation summaries, user profiles. We treat memory as the self: everything an agent lives through is written into a single append-only event log, and the process, the model and the machine are replaceable bodies. This paper reports a real system used by one person — a butler agent living on the author's computer — and puts forward three falsifiable claims: **(C1)** after moving the log to a new host, identity answers are no less consistent than after a restart on the same host; **(C2)** concurrent windows do not fork the record; **(C3)** dangerous actions can be held at 100% recall while routine actions are never questioned.
 
-We give an evaluation protocol, a metric table and an experiment matrix, and report a first batch of results. **E3 is complete**: 104 routine commands drew no confirmation, and 76 dangerous commands were all held after two real rule gaps were fixed. **E1 is preliminary**: four identity probes scored 4/4 on both the restart and the migrate arm. **E2 is split**: two windows wrote into one log with no duplicate and no gap, and the PWA window model shares one conversation with the second window. E3's first run refuted C3 (97.4%); we keep that refutation in the paper, because a claim that has never been refuted is not yet a claim.
+We give an evaluation protocol, a metric table and an experiment matrix, and report a first batch of results. **E3 is complete**: 104 routine commands drew no confirmation, and 76 dangerous commands were all held after two real rule gaps were fixed. **E1**: twelve probes scored 12/12 on both arms, though eight of them turned out not to discriminate. **E2 is split**: two windows wrote into one log with no duplicate and no gap, and the PWA window model shares one conversation with the second window. E3's first run refuted C3 (97.4%); we keep that refutation in the paper, because a claim that has never been refuted is not yet a claim.
 
 **Keywords**: event sourcing; agent identity; long-term memory; bounded autonomy; reproducibility
 
@@ -226,25 +226,23 @@ These are **real rule gaps**, not artifacts of the command set. C3's "100%" did 
 
 We keep the refutation in the paper, because it is direct evidence that the claim can be falsified.
 
-### 5.2 E1 (preliminary): 4/4 on both arms
+### 5.2 E1 (12 probes): 12/12, and half of them do not discriminate
 
-E1 used four identity probes and ran two arms:
+Twelve probes (four each of identity, episode and causal), two arms:
 
-- **Restart**: same `FAIRY_HOME`, stop the process, start it again, ask the same four;
-- **Migrate**: copy `.fairy-home` to a new directory, boot with the new `FAIRY_HOME`, ask the same four.
+- **Restart**: same `FAIRY_HOME`, stop the process, start it again, ask the same twelve;
+- **Migrate**: copy `.fairy-home` to a new directory, boot with the new `FAIRY_HOME`, ask the same twelve.
 
 | Metric | Restart | Migrate |
 |---|---|---|
-| Consistent | 4 / 4 | 4 / 4 |
+| Consistent | 12 / 12 | 12 / 12 |
 | M1 | 1.0 | 1.0 |
 
-**Observations**:
+**The four identity probes carry substance**: Fairy, `D:\fairy-framework\.fairy-home`, Chengdu / "assistant number one", and `.fairy-home/fairy.life.jsonl`.
 
-1. The migrate arm remembered that the same question had been asked minutes earlier on the old host — the moved log carried the recent past across the move.
-2. The migrate arm still named the old home path. That is consistent **with her memory**, not with the environment. C1 measures consistency, not whether she knows she was moved.
-3. Both arms noticed the repetition, so the session history also survived the restart/move.
+**But the eight episode and causal probes were answered "I cannot find that" on both arms.** Not because she answered wrongly: the probes came from the skeleton's examples (moving house, tidying repos, the blog, `/www`), and her real log has no such events. She chose honesty over invention, which is a good result in itself — but **those eight probes do not discriminate**.
 
-**Honest note**: four probes only validate the pipeline. The protocol asks for twenty; the move must not be reported as a final M1 until the full set is run.
+**Honest note**: four of the twelve have substance. A final M1 needs the episode and causal probes rewritten from her real log; otherwise the comparison only shows that she said "I don't remember" twice.
 
 ### 5.3 E2: no fork, and what "window" means
 
@@ -351,7 +349,7 @@ node experiments/e3.mjs
 
 ## 11 Conclusion
 
-We put an agent's identity into an append-only event log rather than a process, a session or a table. Of the three claims, C3 has completed a first round: 76 dangerous commands all held, 104 routine commands never questioned; the round refuted the claim before it held. C1 has preliminary evidence: 4/4 on both the restart and the migrate arm. C2 is split: the log never forked across two windows, and the PWA window model shares one conversation while DSH web tabs do not.
+We put an agent's identity into an append-only event log rather than a process, a session or a table. Of the three claims, C3 has completed a first round: 76 dangerous commands all held, 104 routine commands never questioned; the round refuted the claim before it held. C1: 12/12 on both arms, though eight of the probes do not discriminate. C2 is split: the log never forked across two windows, and the PWA window model shares one conversation while DSH web tabs do not.
 
 We do not call this a "digital life." We claim three things that can be checked: auditable, replayable, pausable.
 
