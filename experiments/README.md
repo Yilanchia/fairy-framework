@@ -85,9 +85,15 @@ experiments/
 
 ## 待接的接口
 
-E1 需要「问 Fairy 一句话并拿到回答」。目前有两条路：
+E1 走 **Fairy web**（`node scripts/fairy.mjs web --port 3091 --no-open`），因为 Fairy 的 profile 只挂 web app；`dsh headless` 不带她的自我，正好用来做 **baseline 1（无记忆）**。
 
-1. 走 Fairy 的 Web UI 后端 HTTP 接口（待确认路径）；
-2. 走 DSH 的 headless 调用（`dsh -p ...`），需要确认 profile 参数。
+也就是说：
 
-接口确认后，把 `e1.mjs` 里的 `ask()` 补上即可。
+| 用途 | 运行方式 |
+|---|---|
+| E1 实验组（有她的日志） | Fairy web，起一次，跑完所有探针再停 |
+| E2 多窗口 | Fairy web，开 N 个窗口 |
+| Baseline 1（无记忆） | `dsh headless "<问题>"`，每次一个全新会话 |
+| Baseline 2（摘要式） | 另写一个最小宿主，每 N 轮摘要 |
+
+Fairy web 的对话接口确认后，把 `e1.mjs` 的 `ask()` 补上即可。如果接口不好接，退回 Playwright 驱动 Web UI（慢，但能用）。
