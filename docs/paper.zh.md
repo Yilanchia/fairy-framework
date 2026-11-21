@@ -1,5 +1,7 @@
 # 事件溯源式的自我：让一个 AI 在她的日志里连续存在
 
+> 润色定稿（中文）：`docs/submission/事件溯源式的自我（ChinaXiv 预印本）.pdf`。本 markdown 为工作稿，投稿以该 PDF 为准。
+
 **Event-Sourced Self: An Agent That Persists in Her Own Log**
 
 **作者**：Yilanchia（独立研究者）

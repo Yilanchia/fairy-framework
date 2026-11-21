@@ -1,5 +1,7 @@
 # Event-Sourced Self: An Agent That Persists in Her Own Log
 
+> Polished preprint (English): `docs/submission/Event-Sourced Self (TechRxiv Preprint).pdf`. This markdown is the working copy; the PDF is the version of record for submission.
+
 **Author**: Yilanchia (independent researcher)
 **Date**: 2026-11-21
 **Version**: body v1 (English)

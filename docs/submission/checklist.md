@@ -52,3 +52,26 @@
 1. **摘要式 baseline**：论文说先做 1（无记忆）和 2（摘要），2 还没做。不做的话，正文里把 baseline 写成“仅无记忆”。
 2. **参考文献**：至少补 MemGPT、Generative Agents、mem0、Temporal 四条，带年份。
 3. **E5（长期）**：没有，如实标“未做”。
+
+## 七、定稿 PDF 待改的 5 处（2026-11-21 核对）
+
+润色版已提取核对（`experiments/out/en-polished.txt`、`zh-polished.txt`），文字质量很高。以下 5 处必须在上传前改掉，PDF 本身无法直接编辑，需在源文件改后重新导出：
+
+1. **参考文献 8、9 是占位符**：`[Placeholder — ...]` 会被初筛退回。建议替换为：
+
+   > 8. Greshake, K., Abdelnabi, S., Mishra, S., Endres, C., Holz, T., & Fritz, M. (2023). *Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection.* AISec '23.
+   > 9. Pineau, J., Vincent-Lamarre, P., Sinha, K., Larivière, V., Beygelzimer, A., d'Alché-Buc, F., Fox, E., & Larochelle, H. (2021). *Improving Reproducibility in Machine Learning Research.* JMLR 22(1).
+
+   不想加就整条删掉，正文不依赖它们。
+
+2. **TBD 阈值**：第 3 节与表 4.2 的 X、L_bcast、L_confirm、α% 仍是悬空符号。建议统一写：
+
+   > This preprint reports descriptive values only; no hard latency ceiling is claimed in this version.
+
+   并把 M1 阈值写成“不低于重启组（配对检验）”。
+
+3. **署名**：确认 “Yilanchia (Independent Researcher)” 是平台允许的公开身份。ChinaXiv 需要后台实名，前台署名可单独核对。
+
+4. **仓库地址**：第 9 节可复现性加一行 `https://github.com/Yilanchia/fairy-framework`，方便审稿人直接访问 `experiments/e3.mjs`。
+
+5. **双语互注**（可选但建议）：中文版脚注 “English preprint: TechRxiv, same title”；英文版脚注 “Chinese preprint: ChinaXiv, same title”。两版元数据备注里也写一句，版本溯源就清楚了。
