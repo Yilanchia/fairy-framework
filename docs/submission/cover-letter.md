@@ -17,7 +17,7 @@
 稿件未在其他平台投稿。代码与实验脚本公开，原始日志不公开。
 
 此致
-Yilanchia
+姜长和
 2026-11-21
 
 ---
@@ -39,5 +39,5 @@ The work has only a no-memory baseline, and the paper says so. It is best read a
 The manuscript is not under consideration elsewhere. Code and experiment scripts are public; the raw log is not.
 
 Sincerely,
-Yilanchia
+Changhe Jiang
 2026-11-21

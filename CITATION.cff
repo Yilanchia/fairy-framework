@@ -6,7 +6,9 @@ abstract: >-
   会话作为窗口、危险动作先问人、多端共用一个写入者。
 type: software
 authors:
-  - alias: Yilanchia
+  - given-names: Changhe
+    family-names: Jiang
+    alias: Yilanchia
     website: "https://github.com/Yilanchia"
 repository-code: "https://github.com/Yilanchia/fairy-framework"
 url: "https://github.com/Yilanchia/fairy-framework"

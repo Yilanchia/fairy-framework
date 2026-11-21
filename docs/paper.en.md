@@ -2,7 +2,7 @@
 
 > Polished preprint (English): `docs/submission/Event-Sourced Self (TechRxiv Preprint).pdf`. This markdown is the working copy; the PDF is the version of record for submission.
 
-**Author**: Yilanchia (independent researcher)
+**Author**: Changhe Jiang (independent researcher)
 **Date**: 2026-11-21
 **Version**: body v1 (English)
 

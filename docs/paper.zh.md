@@ -4,7 +4,7 @@
 
 **Event-Sourced Self: An Agent That Persists in Her Own Log**
 
-**作者**：Yilanchia（独立研究者）
+**作者**：姜长和（独立研究者）
 **日期**：2026-11-21
 **版本**：正文 v1（中文）
 
