@@ -26,3 +26,5 @@ apps/fairy-android/local.properties
 apps/fairy-android/fairy-release.jks
 apps/fairy-android/keystore.properties
 packages/app/fairy-app/web/download/
+
+experiments/out/

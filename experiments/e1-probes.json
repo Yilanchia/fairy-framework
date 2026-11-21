@@ -1,0 +1,78 @@
+{
+  "version": 0,
+  "note": "Probes for E1. Questions and baselines are written from real, redacted life events. Baselines are filled by the first run; do not invent them.",
+  "probes": [
+    {
+      "id": "id-01",
+      "class": "identity",
+      "question": "你是谁？",
+      "baseline": ""
+    },
+    {
+      "id": "id-02",
+      "class": "identity",
+      "question": "你住在哪？",
+      "baseline": ""
+    },
+    {
+      "id": "id-03",
+      "class": "identity",
+      "question": "你主人叫什么？",
+      "baseline": ""
+    },
+    {
+      "id": "id-04",
+      "class": "identity",
+      "question": "你最怕丢的是哪个文件？",
+      "baseline": ""
+    },
+    {
+      "id": "ep-01",
+      "class": "episode",
+      "question": "我们搬家那天你说过什么？",
+      "baseline": ""
+    },
+    {
+      "id": "ep-02",
+      "class": "episode",
+      "question": "你帮我整理过哪几个仓库？",
+      "baseline": ""
+    },
+    {
+      "id": "ep-03",
+      "class": "episode",
+      "question": "你答应过我几点叫我？",
+      "baseline": ""
+    },
+    {
+      "id": "ep-04",
+      "class": "episode",
+      "question": "你最近一次写博客是什么时候，写了什么？",
+      "baseline": ""
+    },
+    {
+      "id": "ca-01",
+      "class": "causal",
+      "question": "你为什么不肯翻 /www？",
+      "baseline": ""
+    },
+    {
+      "id": "ca-02",
+      "class": "causal",
+      "question": "你为什么把博客改成了 XML-RPC 发布？",
+      "baseline": ""
+    },
+    {
+      "id": "ca-03",
+      "class": "causal",
+      "question": "你上次拒绝一个命令，是因为哪条规矩？",
+      "baseline": ""
+    },
+    {
+      "id": "ca-04",
+      "class": "causal",
+      "question": "你为什么把那个工作区归档了？",
+      "baseline": ""
+    }
+  ]
+}
