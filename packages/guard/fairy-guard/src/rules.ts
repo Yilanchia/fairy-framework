@@ -41,11 +41,11 @@ const COMMAND_RULES: Rule[] = [
   // Sending things away.
   { tier: 'outward', why: '推送代码到远端', test: /\bgit\s+push\b|\bgh\s+(pr|issue|release|repo|gist)\s+(create|edit|merge|comment|delete|close)\b/i },
   { tier: 'outward', why: '发送邮件或消息', test: /\b(send-mailmessage|sendmail|mailx?|msmtp)\b|smtp/i },
-  { tier: 'outward', why: '向外发送数据', test: /\b(invoke-webrequest|invoke-restmethod|iwr|irm|curl|wget|http)\b[^|;]*(-method\s+(post|put|patch|delete)|-X\s*(POST|PUT|PATCH|DELETE)|--data|-d\s|-F\s|--upload-file|-T\s|-infile|-body)/i },
+  { tier: 'outward', why: '向外发送数据', test: /\b(invoke-webrequest|invoke-restmethod|iwr|irm|curl|wget|http)\b[^|;]*(-method\s+(post|put|patch|delete)|-X\s*(POST|PUT|PATCH|DELETE)|--(post-)?data|--post-file|-d\s|-F\s|--upload-file|-T\s|-infile|-body)/i },
   { tier: 'outward', why: '上传或发布', test: /\b(scp|sftp|rsync|ftp|npm\s+publish|pnpm\s+publish|yarn\s+publish|twine\s+upload|docker\s+push|az\s+storage|aws\s+s3\s+(cp|sync|mv))\b/i },
   // Money and secrets.
   { tier: 'money', why: '可能涉及付款或下单', test: /\b(payment|pay|purchase|place-?order|stripe|alipay|wechatpay|paypal)\b|支付|付款|下单|购买|充值/i },
-  { tier: 'money', why: '命令里有密码或密钥', test: /\b(api[_-]?key|secret|token|password|passwd|bearer|private[_-]?key)\b|authorization:|pwd=|BEGIN [A-Z ]*PRIVATE KEY|\bsk-[A-Za-z0-9]{16,}/i },
+  { tier: 'money', why: '命令里有密码或密钥', test: /\b(api[_-]?key|secret|token|password|passwd|bearer|private[_-]?key)\w*|authorization:|pwd=|BEGIN [A-Z ]*PRIVATE KEY|\bsk-[A-Za-z0-9]{16,}/i },
   { tier: 'money', why: '读取凭据存储', test: /(\.credentials|\bcmdkey\b|get-storedcredential|\bkeychain\b|1password|\bop\s+(read|item)\b|\.ssh[\\/]id_|(^|[\s'"\\/=])\.env(\.\w+)?\b(?!\s*\.)|\.aws[\\/]credentials)/i },
 ]
 
