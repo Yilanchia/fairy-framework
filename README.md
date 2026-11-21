@@ -15,7 +15,7 @@
 - 怎么长期养着她：[docs/maintenance.md](docs/maintenance.md)（每周看一眼、升级、恢复、密钥）
 - 她的控制台：[docs/console.md](docs/console.md)（外观与风格）
 - 设计取舍：[docs/decisions.md](docs/decisions.md)；记忆系统：[docs/memory.md](docs/memory.md)；**独立项目** Fairy Watch：[docs/watch.md](docs/watch.md)
-- 论文骨架（三条可证伪的主张 + 评测表）：[docs/paper.md](docs/paper.md)
+- 论文骨架（三条可证伪的主张 + 评测表）：真源在 isla 仓库 [docs/paper.md](https://github.com/Yilanchia/isla/blob/main/docs/paper.md)；本仓库 [docs/paper.md](docs/paper.md) 是它的镜像（只读）
 - 一篇讲设计的文章：[docs/essay-continuous-self.md](docs/essay-continuous-self.md)（怎么让一个 AI 拥有连续的自我）；同一件事的叙事版：[docs/ai.md](docs/ai.md)
 - 接手的编码智能体先读 [AGENTS.md](AGENTS.md)
 
