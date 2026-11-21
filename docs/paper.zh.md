@@ -362,16 +362,17 @@ node experiments/e3.mjs
 
 ---
 
-## 参考文献（占位，待逐条核实）
+## 参考文献
 
-1. 长期记忆智能体：MemGPT / Letta 系列。
-2. 记忆服务：mem0 及同类抽取式记忆系统。
-3. 生成式智能体：Generative Agents。
-4. 工作流持久化：LangGraph checkpoint、Temporal。
-5. 事件溯源与 CQRS：经典工程实践。
-6. 智能体安全：工具调用与权限边界相关研究（待补）。
-7. 可复现性：ML 系统评测报告规范（待补）。
-8. 事件日志与审计：分布式系统日志相关研究（待补）。
+1. Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., & Gonzalez, J. E. (2023). *MemGPT: Towards LLMs as Operating Systems.* arXiv:2310.08560.
+2. Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior.* UIST 2023. arXiv:2304.03442.
+3. Chhikara, P., Khant, D., Aryan, S., Singh, T., & Yadav, D. (2025). *Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory.* arXiv:2504.19413.
+4. Temporal Technologies (2019–). *Temporal: Durable Execution.* <https://temporal.io>.
+5. Letta (2024–). *Letta: stateful agents* (the engineering successor to MemGPT). <https://letta.com>.
+6. Fowler, M. (2005). *Event Sourcing.* <https://martinfowler.com/eaaDev/EventSourcing.html>.
+7. Kreps, J., Narkhede, N., & Rao, J. (2011). *Kafka: a Distributed Messaging System for Log Processing.* NetDB 2011.
+8. 智能体安全：工具调用与权限边界相关研究（待补，2025–2026）。
+9. 可复现性：ML 系统评测报告规范（待补）。
 
 ---
 

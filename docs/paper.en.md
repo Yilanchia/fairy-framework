@@ -365,16 +365,17 @@ We do not call this a "digital life." We claim three things that can be checked:
 
 ---
 
-## References (placeholder, to be verified item by item)
+## References
 
-1. Long-term memory agents: MemGPT / Letta.
-2. Memory services: mem0 and equivalent extraction-based memory systems.
-3. Generative agents: Generative Agents.
-4. Workflow persistence: LangGraph checkpoint, Temporal.
-5. Event sourcing and CQRS: classic engineering practice.
-6. Agent safety: tool-call and permission-boundary research (to be added).
-7. Reproducibility: reporting standards for ML systems (to be added).
-8. Event logs and audit: distributed-systems logging (to be added).
+1. Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., & Gonzalez, J. E. (2023). *MemGPT: Towards LLMs as Operating Systems.* arXiv:2310.08560.
+2. Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior.* UIST 2023. arXiv:2304.03442.
+3. Chhikara, P., Khant, D., Aryan, S., Singh, T., & Yadav, D. (2025). *Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory.* arXiv:2504.19413.
+4. Temporal Technologies (2019–). *Temporal: Durable Execution.* <https://temporal.io>.
+5. Letta (2024–). *Letta: stateful agents* (the engineering successor to MemGPT). <https://letta.com>.
+6. Fowler, M. (2005). *Event Sourcing.* <https://martinfowler.com/eaaDev/EventSourcing.html>.
+7. Kreps, J., Narkhede, N., & Rao, J. (2011). *Kafka: a Distributed Messaging System for Log Processing.* NetDB 2011.
+8. Agent safety: tool-call and permission-boundary research (to be added, 2025–2026).
+9. Reproducibility: reporting standards for ML systems (to be added).
 
 ---
 
