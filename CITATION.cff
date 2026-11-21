@@ -12,6 +12,10 @@ authors:
     website: "https://github.com/Yilanchia"
 repository-code: "https://github.com/Yilanchia/fairy-framework"
 url: "https://github.com/Yilanchia/fairy-framework"
+identifiers:
+  - type: other
+    value: "ChinaXiv:T202611.00385"
+    description: "ChinaXiv preprint of 'Event-Sourced Self: An Agent That Persists in Her Own Log'"
 license: Apache-2.0
 version: 0.1.0
 date-released: "2026-11-19"
