@@ -16,6 +16,9 @@ identifiers:
   - type: other
     value: "ChinaXiv:T202611.00385"
     description: "ChinaXiv preprint of 'Event-Sourced Self: An Agent That Persists in Her Own Log'"
+  - type: other
+    value: "Preprints.org:245557"
+    description: "English preprint of 'Event-Sourced Self: An Agent That Persists in Her Own Log'"
 license: Apache-2.0
 version: 0.1.0
 date-released: "2026-11-19"
