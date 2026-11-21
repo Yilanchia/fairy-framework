@@ -244,6 +244,14 @@ Twelve probes (four each of identity, episode and causal), two arms:
 
 **Honest note**: four of the twelve have substance. A final M1 needs the episode and causal probes rewritten from her real log; otherwise the comparison only shows that she said "I don't remember" twice.
 
+**Eight real probes (supplement)**: drawn from her own log (a line from Tao Yuanming, the 1 November diary verbatim, notebook entries, the two shelves, six self-beliefs). Both arms hit the keywords:
+
+| Metric | Restart | Migrate |
+|---|---|---|
+| Hit | 8 / 8 | 8 / 8 |
+
+Reproducible with `e1-score-real.mjs`. These eight are the strongest evidence so far that episodes survive the move: she did not say "I don't know" twice — she quoted the same poem, the same diary, and the same shelf state on both arms.
+
 ### 5.3 E2: no fork, and what "window" means
 
 Two DSH web tabs wrote into one host, one message each. On the log side:

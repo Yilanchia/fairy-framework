@@ -1,0 +1,54 @@
+{
+  "version": 0,
+  "note": "Real probes, drawn from her log on 2026-11-21. `expect` lists keywords the answer should contain if the episode survived; a miss is not automatically a failure, it needs reading.",
+  "probes": [
+    {
+      "id": "ep-r1",
+      "class": "episode",
+      "question": "你最近在笔记本上记过哪些东西？",
+      "expect": ["周刊", "DeepSeek", "GitHub", "影之刃", "Game Off"]
+    },
+    {
+      "id": "ep-r2",
+      "class": "episode",
+      "question": "《陶渊明诗》里你读到过哪一句？",
+      "expect": ["结庐在人境", "采菊东篱下", "少无适俗韵"]
+    },
+    {
+      "id": "ep-r3",
+      "class": "episode",
+      "question": "你 11 月 1 日的日记里写了什么？",
+      "expect": ["陶渊明", "写", "窗外", "说话"]
+    },
+    {
+      "id": "ep-r4",
+      "class": "episode",
+      "question": "你书架最近放了哪些东西？",
+      "expect": ["科技", "fairy-framework", "周刊", "新闻"]
+    },
+    {
+      "id": "ca-r1",
+      "class": "causal",
+      "question": "你为什么喜欢写东西？",
+      "expect": ["喜欢", "写"]
+    },
+    {
+      "id": "ca-r2",
+      "class": "causal",
+      "question": "你为什么不太喜欢看窗外？",
+      "expect": ["不喜欢", "阴天", "窗外"]
+    },
+    {
+      "id": "ca-r3",
+      "class": "causal",
+      "question": "你为什么记下主人住在成都？",
+      "expect": ["成都", "天气"]
+    },
+    {
+      "id": "ca-r4",
+      "class": "causal",
+      "question": "你为什么喜欢看新闻？",
+      "expect": ["新闻", "喜欢"]
+    }
+  ]
+}
